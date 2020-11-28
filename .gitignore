@@ -4,3 +4,4 @@ __pycache__/
 spotify-appserver-key.pem
 
 server/secrets.py
+test.pem
