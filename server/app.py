@@ -41,13 +41,16 @@ def add_song_metadata():
         return response("Error: Missing fields in request body", False, 400)
     token = req.post("https://accounts.spotify.com/api/token", headers = {'Authorization': f"Basic {base64Message}"}, data = {'grant_type':'client_credentials'}).json()['access_token']
     url = f"https://api.spotify.com/v1/audio-features/{req_data['songId']}"
-    metadata_req = req.post(url, headers = {"Authorization": "Bearer " + token})
+    metadata_req = req.get(url, headers = {"Authorization": "Bearer " + token})
     if metadata_req.status_code == 200:
         metadata = metadata_req.json()
         data = [metadata['key'], metadata['mode'], metadata['time_signature'], metadata['acousticness'], metadata['danceability'], metadata['energy'], metadata['instrumentalness'], metadata['liveness'], metadata['loudness'], metadata['speechiness'], metadata['valence'], metadata['tempo']]
         if db.songs.find_one({'songId': req_data['songId']})==None:
             db.songs.insert_one({'songId': req_data['songId'], 'metadata': metadata})
-    return response("Song successfully added", True, 200)
+            return response("Song successfully added", True, 200)
+        else:
+            return response("Song already present", False, 409)
+    return response("Server error", False, 500)
 
 @app.route("/api/fitness/addBodyParameterValues", methods=["POST"])
 def add_body_parameter_values():
