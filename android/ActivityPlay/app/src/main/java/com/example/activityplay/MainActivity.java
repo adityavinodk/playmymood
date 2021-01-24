@@ -14,7 +14,9 @@ import android.widget.Toast;
 
 import com.example.activityplay.model.SpotifyPagingObject;
 import com.example.activityplay.model.SpotifyTrack;
+import com.example.activityplay.network.IBackendAPI;
 import com.example.activityplay.network.ISpotifyAPI;
+import com.example.activityplay.networkmanager.BackendRetrofitBuilder;
 import com.example.activityplay.networkmanager.SpotifyRetrofitBuilder;
 import com.spotify.sdk.android.authentication.AuthenticationClient;
 import com.spotify.sdk.android.authentication.AuthenticationRequest;
@@ -70,6 +72,9 @@ public class MainActivity extends AppCompatActivity {
         if (authorizationResponse.getType() == AuthenticationResponse.Type.TOKEN) {
 
             Log.d("SPOTIFYLOGIN", "onActivityResult: Logged in successfully");
+            SharedPreferences.Editor editor = sharedPreferences.edit();
+            editor.putString("isLoggedIn", authorizationResponse.getAccessToken());
+            startActivity(new Intent(MainActivity.this, HomeActivity.class));
 
             Retrofit spotifyRetrofit = SpotifyRetrofitBuilder.getInstance();
             ISpotifyAPI iSpotifyAPI = spotifyRetrofit.create(ISpotifyAPI.class);
@@ -82,10 +87,22 @@ public class MainActivity extends AppCompatActivity {
 
                     if(response.isSuccessful()){
                         Log.d("SPOTIFYGETTOPTRACKS", "onResponse: " +response.body().getItems().toString());
-                        // todo : send API call to server
-                        SharedPreferences.Editor editor = sharedPreferences.edit();
-                        editor.putString("isLoggedIn", authorizationResponse.getAccessToken());
-                        startActivity(new Intent(MainActivity.this, HomeActivity.class));
+
+                        Retrofit backendRetrofit = BackendRetrofitBuilder.getInstance();
+                        IBackendAPI iBackendAPI = backendRetrofit.create(IBackendAPI.class);
+
+                        Call<Void> backendTopTracksCall = iBackendAPI.sendTopTracks(response.body().getItems());
+                        backendTopTracksCall.enqueue(new Callback<Void>() {
+                            @Override
+                            public void onResponse(Call<Void> call, Response<Void> response) {
+                                Log.d("BACKENDSENDTOPTRACKS", "onResponse: STATUS = " +response.code());
+                            }
+
+                            @Override
+                            public void onFailure(Call<Void> call, Throwable t) {
+                                Log.d("BACKENDSENDTOPTRACKS", "onFailure: Backend call failed");
+                            }
+                        });
                     }
 
                     else {
