@@ -72,6 +72,8 @@ public class MainActivity extends AppCompatActivity {
         if (authorizationResponse.getType() == AuthenticationResponse.Type.TOKEN) {
 
             Log.d("SPOTIFYLOGIN", "onActivityResult: Logged in successfully");
+
+            sharedPreferences = getSharedPreferences("com.example.activityplay", Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = sharedPreferences.edit();
             editor.putString("isLoggedIn", authorizationResponse.getAccessToken());
             startActivity(new Intent(MainActivity.this, HomeActivity.class));
@@ -79,7 +81,7 @@ public class MainActivity extends AppCompatActivity {
             Retrofit spotifyRetrofit = SpotifyRetrofitBuilder.getInstance();
             ISpotifyAPI iSpotifyAPI = spotifyRetrofit.create(ISpotifyAPI.class);
 
-            Call<SpotifyPagingObject> spotifyPagingObjectCall = iSpotifyAPI.getTopTracks(authorizationResponse.getAccessToken(), 50, 0);
+            Call<SpotifyPagingObject> spotifyPagingObjectCall = iSpotifyAPI.getTopTracks("Bearer " +authorizationResponse.getAccessToken(), 50, 0);
 
             spotifyPagingObjectCall.enqueue(new Callback<SpotifyPagingObject>() {
                 @Override

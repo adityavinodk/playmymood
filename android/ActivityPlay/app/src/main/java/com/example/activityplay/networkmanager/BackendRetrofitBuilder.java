@@ -15,7 +15,7 @@ public class BackendRetrofitBuilder {
         if (instance == null) {
             synchronized (com.example.activityplay.networkmanager.SpotifyRetrofitBuilder.class) {
                 if (instance == null) {
-                    instance = new Retrofit.Builder().baseUrl("3.236.57.111:8000/")
+                    instance = new Retrofit.Builder().baseUrl("http://3.236.57.111:8000/")
                             .addConverterFactory(GsonConverterFactory.create()).client(new OkHttpClient()).build();
                 }
             }
