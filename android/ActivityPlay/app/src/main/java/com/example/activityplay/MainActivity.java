@@ -92,19 +92,21 @@ public class MainActivity extends AppCompatActivity {
 
                         Retrofit backendRetrofit = BackendRetrofitBuilder.getInstance();
                         IBackendAPI iBackendAPI = backendRetrofit.create(IBackendAPI.class);
+                        List<SpotifyTrack> spotifyTracks = response.body().getItems();
+                        for(SpotifyTrack track : spotifyTracks){
+                            Call<Void> backendTopTracksCall = iBackendAPI.sendTopTracks(track);
+                            backendTopTracksCall.enqueue(new Callback<Void>() {
+                                @Override
+                                public void onResponse(Call<Void> call, Response<Void> response) {
+                                    Log.d("BACKENDSENDTOPTRACKS", "onResponse: STATUS = " +response.code());
+                                }
 
-                        Call<Void> backendTopTracksCall = iBackendAPI.sendTopTracks(response.body().getItems());
-                        backendTopTracksCall.enqueue(new Callback<Void>() {
-                            @Override
-                            public void onResponse(Call<Void> call, Response<Void> response) {
-                                Log.d("BACKENDSENDTOPTRACKS", "onResponse: STATUS = " +response.code());
-                            }
-
-                            @Override
-                            public void onFailure(Call<Void> call, Throwable t) {
-                                Log.d("BACKENDSENDTOPTRACKS", "onFailure: Backend call failed");
-                            }
-                        });
+                                @Override
+                                public void onFailure(Call<Void> call, Throwable t) {
+                                    Log.d("BACKENDSENDTOPTRACKS", "onFailure: Backend call failed");
+                                }
+                            });
+                        }
                     }
 
                     else {
