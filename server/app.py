@@ -60,5 +60,10 @@ def add_body_parameter_values():
     db.fitness.insert_one(req_data)
     return response("Fitness parameter value successfully added", True, 200)
 
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def hello(path):
+    return "Hello, this domain is used for PlayMyMood project."
+
 if __name__ == "__main__":
     app.run(debug=True, port=8000, host="0.0.0.0")
