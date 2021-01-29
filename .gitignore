@@ -2,3 +2,6 @@
 .DS_Store
 __pycache__/
 spotify-appserver-key.pem
+
+server/secrets.py
+test.pem
