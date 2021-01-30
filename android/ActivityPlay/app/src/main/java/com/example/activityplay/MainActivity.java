@@ -14,6 +14,7 @@ import android.widget.Toast;
 
 import com.example.activityplay.model.SpotifyPagingObject;
 import com.example.activityplay.model.SpotifyTrack;
+import com.example.activityplay.model.CurrentlyPlayingTrack;
 import com.example.activityplay.network.IBackendAPI;
 import com.example.activityplay.network.ISpotifyAPI;
 import com.example.activityplay.networkmanager.BackendRetrofitBuilder;
@@ -87,14 +88,14 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onResponse(Call<SpotifyPagingObject> call, Response<SpotifyPagingObject> response) {
 
-                    if(response.isSuccessful()){
+                    if(response.isSuccessful() && response.code()==200){
                         Log.d("SPOTIFYGETTOPTRACKS", "onResponse: " +response.body().getItems().toString());
 
                         Retrofit backendRetrofit = BackendRetrofitBuilder.getInstance();
                         IBackendAPI iBackendAPI = backendRetrofit.create(IBackendAPI.class);
                         List<SpotifyTrack> spotifyTracks = response.body().getItems();
                         for(SpotifyTrack track : spotifyTracks){
-                            Call<Void> backendTopTracksCall = iBackendAPI.sendTopTracks(track);
+                            Call<Void> backendTopTracksCall = iBackendAPI.sendSongData(track);
                             backendTopTracksCall.enqueue(new Callback<Void>() {
                                 @Override
                                 public void onResponse(Call<Void> call, Response<Void> response) {
@@ -121,6 +122,33 @@ public class MainActivity extends AppCompatActivity {
                 }
             });
 
+            // Call<CurrentlyPlayingTrack> spotifyCurrentlyPlayingTrackCall = iSpotifyAPI.getCurrentlyPlayingTrack("Bearer " +authorizationResponse.getAccessToken());
+            // SpotifyCurrentlyPlayingTrack.enqueue(new Callback<CurrentlyPlayingTrack>(){
+            //     @Override
+            //     public void onResponse(Call<CurrentlyPlayingTrack> call, Response<CurrentlyPlayingTrack> response){
+            //         if(response.isSuccessful() && response.code()==200){
+            //             Log.d("SPOTIFYGETCURRENTLYPLAYINGTRACK", "onResponse: "+response.body().getItem().toString());
+
+            //             SpotifyTrack spotifyTrack = response.body().getItem();
+            //             Call<Void> sendCurrentSongDataCall = iBackendAPI.sendCurrentlyPlayingTrack(spotifyTrack);
+            //             sendCurrentSongDataCall.enqueue(new Callback<Void>(){
+            //                 @Override
+            //                 public void onResponse(Call<Void> call, Response<Void> response){
+            //                     Log.d("BACKENDSENDCURRENTSONGDATA", "onResponse: STATUS = "+response.code());
+            //                 }
+            //                 public void onFailure(Call<Void> call, Throwable t){
+            //                     Log.d("BACKENDSENDCURRENTSONGDATA", "onFailure: Backend call failed");
+            //                 }
+            //             })
+
+            //         }
+            //     }
+
+            //     @Override
+            //     public void onFailure(Call<CurrentlyPlayingTrack> call, Throwable t){
+            //         Log.d("SPOTIFYGETCURRENTLYPLAYINGTRACK", "onFailure: Couldn't connect to Spotify Web API");
+            //     }
+            // })
 
         }
 

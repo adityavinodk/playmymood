@@ -10,5 +10,8 @@ import retrofit2.http.POST;
 
 public interface IBackendAPI {
     @POST("/api/songs/addMetadata")
-    Call<Void> sendTopTracks(@Body SpotifyTrack spotifytrack);
+    Call<Void> sendSongData(@Body SpotifyTrack spotifytrack);
+
+    // @POST("/api/songs/sendCurrentlyPlayingTrack")
+    // Call<Void> sendCurrentlyPlayingTrack(@Body SpotifyTrack spotifytrack);
 }
