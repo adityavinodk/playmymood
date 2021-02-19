@@ -8,13 +8,10 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
 import com.example.activityplay.model.SpotifyPagingObject;
 import com.example.activityplay.model.SpotifyTrack;
-import com.example.activityplay.model.CurrentlyPlayingTrack;
 import com.example.activityplay.network.IBackendAPI;
 import com.example.activityplay.network.ISpotifyAPI;
 import com.example.activityplay.networkmanager.BackendRetrofitBuilder;
@@ -23,7 +20,6 @@ import com.spotify.sdk.android.authentication.AuthenticationClient;
 import com.spotify.sdk.android.authentication.AuthenticationRequest;
 import com.spotify.sdk.android.authentication.AuthenticationResponse;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import retrofit2.Call;
