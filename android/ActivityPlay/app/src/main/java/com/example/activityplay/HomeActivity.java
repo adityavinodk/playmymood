@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.PersistableBundle;
 import android.util.Log;
 
@@ -25,78 +26,78 @@ import retrofit2.Retrofit;
 public class HomeActivity extends AppCompatActivity {
     SharedPreferences sharedPreferences;
     SpotifyCurrentTrack currentTrack = new SpotifyCurrentTrack();
-    Handler handler = new Handler();
+
+    final Handler handler = new Handler();
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState, @Nullable PersistableBundle persistentState) {
         super.onCreate(savedInstanceState, persistentState);
 
-        // todo : add button functionality
-
         sharedPreferences = getSharedPreferences("com.example.activityplay", Context.MODE_PRIVATE);
-        hitApi();
+
+        Log.d("CURRENT_TRACK", "onCreate: Starting handler...");
+
+        handler.post(runnable);
 
     }
 
-    public void hitApi() {
-        handler.postDelayed(new Runnable() {
-            @Override
-            public void run() {
+    private final Runnable runnable = new Runnable() {
+        @Override
+        public void run() {
 
-                Log.d("CURRENT_TRACK", "run: Initiating current playing track handler");
+            Log.d("CURRENT_TRACK", "run: Initiating current playing track handler");
 
-                sharedPreferences = getSharedPreferences("com.example.activityplay", Context.MODE_PRIVATE);
+            sharedPreferences = getSharedPreferences("com.example.activityplay", Context.MODE_PRIVATE);
 
-                Retrofit spotifyRetrofit = SpotifyRetrofitBuilder.getInstance();
-                ISpotifyAPI iSpotifyAPI = spotifyRetrofit.create(ISpotifyAPI.class);
+            Retrofit spotifyRetrofit = SpotifyRetrofitBuilder.getInstance();
+            ISpotifyAPI iSpotifyAPI = spotifyRetrofit.create(ISpotifyAPI.class);
 
-                Call<SpotifyCurrentTrack> spotifyCurrentTrackCall = iSpotifyAPI.getCurrentTrack("Bearer " +sharedPreferences.getString("isLoggedIn", ""));
+            Call<SpotifyCurrentTrack> spotifyCurrentTrackCall = iSpotifyAPI.getCurrentTrack("Bearer " +sharedPreferences.getString("isLoggedIn", ""));
 
-                spotifyCurrentTrackCall.enqueue(new Callback<SpotifyCurrentTrack>() {
-                    @Override
-                    public void onResponse(Call<SpotifyCurrentTrack> call, Response<SpotifyCurrentTrack> response) {
+            spotifyCurrentTrackCall.enqueue(new Callback<SpotifyCurrentTrack>() {
+                @Override
+                public void onResponse(Call<SpotifyCurrentTrack> call, Response<SpotifyCurrentTrack> response) {
 
-                        Log.d("CURRENT_TRACK", "onResponse: Call made to Spotify with response " +response.code());
+                    Log.d("CURRENT_TRACK", "onResponse: Call made to Spotify with response " +response.code());
 
-                        if(response.body() != null && response.code()==200){
+                    if(response.body() != null && response.code()==200){
 
-                            if (!currentTrack.equals(response.body())) {
+                        if (!currentTrack.equals(response.body())) {
 
-                                currentTrack.setItem(response.body().getItem());
+                            currentTrack.setItem(response.body().getItem());
 
-                                Retrofit backendRetrofit = BackendRetrofitBuilder.getInstance();
-                                IBackendAPI iBackendAPI = backendRetrofit.create(IBackendAPI.class);
+                            Retrofit backendRetrofit = BackendRetrofitBuilder.getInstance();
+                            IBackendAPI iBackendAPI = backendRetrofit.create(IBackendAPI.class);
 
-                                Call<Void> backendSendCurrentTrackCall = iBackendAPI.addCurrentlyPlayingTrack(response.body().getItem());
-                                backendSendCurrentTrackCall.enqueue(new Callback<Void>() {
-                                    @Override
-                                    public void onResponse(Call<Void> call, Response<Void> response) {
-                                        Log.d("CURRENT_TRACK", "onResponse: Sent to server with response " +response.code());
-                                    }
+                            Call<Void> backendSendCurrentTrackCall = iBackendAPI.addCurrentlyPlayingTrack(response.body().getItem());
+                            backendSendCurrentTrackCall.enqueue(new Callback<Void>() {
+                                @Override
+                                public void onResponse(Call<Void> call, Response<Void> response) {
+                                    Log.d("CURRENT_TRACK", "onResponse: Sent to server with response " +response.code());
+                                }
 
-                                    @Override
-                                    public void onFailure(Call<Void> call, Throwable t) {
-                                        Log.d("CURRENT_TRACK", "onFailure: Send to backend server failed");
-                                    }
-                                });
-                            }
-                        }
-
-                        else{
-                            Log.d("CURRENT_TRACK", "onResponse: Call made to Spotify with response " +response.code() +". Nothing playing (if 200) else error.");
+                                @Override
+                                public void onFailure(Call<Void> call, Throwable t) {
+                                    Log.d("CURRENT_TRACK", "onFailure: Send to backend server failed");
+                                }
+                            });
                         }
                     }
 
-                    @Override
-                    public void onFailure(Call<SpotifyCurrentTrack> call, Throwable t) {
-                        Log.d("CURRENT_TRACK", "onFailure: Call to Spotify failed");
+                    else{
+                        Log.d("CURRENT_TRACK", "onResponse: Call made to Spotify with response " +response.code() +". Nothing playing (if 200) else error.");
                     }
-                });
+                }
 
-                hitApi();
+                @Override
+                public void onFailure(Call<SpotifyCurrentTrack> call, Throwable t) {
+                    Log.d("CURRENT_TRACK", "onFailure: Call to Spotify failed");
+                }
+            });
 
-            }
-        }, 5000);
-    }
+            handler.postDelayed(runnable, 5000);
+
+        }
+    };
 
 }
