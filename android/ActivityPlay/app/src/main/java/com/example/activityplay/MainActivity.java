@@ -52,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
         }
         else{
             AuthenticationRequest.Builder builder = new AuthenticationRequest.Builder(CLIENT_ID, AuthenticationResponse.Type.TOKEN, REDIRECT_URI);
-            builder.setScopes(new String[]{"user-top-read"});
+            builder.setScopes(new String[]{"user-top-read", "user-read-currently-playing", "user-read-playback-state"});
             AuthenticationRequest request = builder.build();
             findViewById(R.id.bt_signin).setOnClickListener(view -> {
                 AuthenticationClient.openLoginActivity(this, RC_SPOTIFY, request);

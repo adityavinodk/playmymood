@@ -58,7 +58,7 @@ public class HomeActivity extends AppCompatActivity {
                 @Override
                 public void onResponse(Call<SpotifyCurrentTrack> call, Response<SpotifyCurrentTrack> response) {
 
-                    Log.d("CURRENT_TRACK", "onResponse: Call made to Spotify with response " +response.code());
+                    Log.d("CURRENT_TRACK", "onResponse: Call made to Spotify with response " +response.code() +" " +response.message());
 
                     if(response.body() != null && response.code()==200){
 
