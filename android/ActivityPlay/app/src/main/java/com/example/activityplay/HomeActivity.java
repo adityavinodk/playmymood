@@ -4,15 +4,12 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.HandlerThread;
-import android.os.PersistableBundle;
 import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.activityplay.model.SpotifyCurrentTrack;
-import com.example.activityplay.model.SpotifyPagingObject;
 import com.example.activityplay.network.IBackendAPI;
 import com.example.activityplay.network.ISpotifyAPI;
 import com.example.activityplay.networkmanager.BackendRetrofitBuilder;
@@ -30,14 +27,16 @@ public class HomeActivity extends AppCompatActivity {
     static Handler handler;
 
     @Override
-    public void onCreate(@Nullable Bundle savedInstanceState, @Nullable PersistableBundle persistentState) {
-        super.onCreate(savedInstanceState, persistentState);
+    public void onCreate(@Nullable Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_home);
 
         sharedPreferences = getSharedPreferences("com.example.activityplay", Context.MODE_PRIVATE);
 
         Log.d("CURRENT_TRACK", "onCreate: Starting handler...");
 
         handler = new Handler();
+
         handler.post(runnable);
 
     }
