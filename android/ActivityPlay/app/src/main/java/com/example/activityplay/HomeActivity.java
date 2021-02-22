@@ -45,12 +45,12 @@ public class HomeActivity extends AppCompatActivity {
         @Override
         public void run() {
 
-            Log.d("CURRENT_TRACK", "run: Initiating current playing track handler");
-
             sharedPreferences = getSharedPreferences("com.example.activityplay", Context.MODE_PRIVATE);
 
             Retrofit spotifyRetrofit = SpotifyRetrofitBuilder.getInstance();
             ISpotifyAPI iSpotifyAPI = spotifyRetrofit.create(ISpotifyAPI.class);
+
+            Log.d("CURRENT_TRACK", "Token: " +sharedPreferences.getString("isLoggedIn", ""));
 
             Call<SpotifyCurrentTrack> spotifyCurrentTrackCall = iSpotifyAPI.getCurrentTrack("Bearer " +sharedPreferences.getString("isLoggedIn", ""), "from_token");
 
