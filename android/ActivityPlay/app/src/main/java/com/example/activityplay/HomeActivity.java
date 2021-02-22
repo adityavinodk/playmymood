@@ -10,6 +10,7 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.activityplay.model.SpotifyCurrentTrack;
+import com.example.activityplay.model.SpotifyTrack;
 import com.example.activityplay.network.IBackendAPI;
 import com.example.activityplay.network.ISpotifyAPI;
 import com.example.activityplay.networkmanager.BackendRetrofitBuilder;
@@ -22,7 +23,7 @@ import retrofit2.Retrofit;
 
 public class HomeActivity extends AppCompatActivity {
     static SharedPreferences sharedPreferences;
-    SpotifyCurrentTrack currentTrack = new SpotifyCurrentTrack();
+    static SpotifyCurrentTrack currentTrack = new SpotifyCurrentTrack();
 
     static Handler handler;
 
@@ -34,6 +35,9 @@ public class HomeActivity extends AppCompatActivity {
         sharedPreferences = getSharedPreferences("com.example.activityplay", Context.MODE_PRIVATE);
 
         Log.d("CURRENT_TRACK", "onCreate: Starting handler...");
+        SpotifyTrack dummySpotifyTrack = new SpotifyTrack();
+        dummySpotifyTrack.setId("");
+        currentTrack.setItem(dummySpotifyTrack);
 
         handler = new Handler();
 
@@ -62,7 +66,7 @@ public class HomeActivity extends AppCompatActivity {
 
                     if(response.body() != null && response.code()==200){
 
-                        if (!currentTrack.getItem().equals(response.body().getItem())) {
+                        if (!currentTrack.getItem().getId().equals(response.body().getItem().getId())) {
 
                             currentTrack.setItem(response.body().getItem());
 
