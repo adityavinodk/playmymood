@@ -13,5 +13,5 @@ public interface ISpotifyAPI {
     Call<SpotifyPagingObject> getTopTracks(@Header("Authorization") String token, @Query("limit") int limit, @Query("offset") int offset);
 
     @GET("/v1/me/player/currently-playing")
-    Call<SpotifyCurrentTrack> getCurrentTrack(@Header("Authorization") String token);
+    Call<SpotifyCurrentTrack> getCurrentTrack(@Header("Authorization") String token, @Query("market") String from_token);
 }

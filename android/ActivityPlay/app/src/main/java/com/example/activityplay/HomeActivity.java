@@ -52,7 +52,7 @@ public class HomeActivity extends AppCompatActivity {
             Retrofit spotifyRetrofit = SpotifyRetrofitBuilder.getInstance();
             ISpotifyAPI iSpotifyAPI = spotifyRetrofit.create(ISpotifyAPI.class);
 
-            Call<SpotifyCurrentTrack> spotifyCurrentTrackCall = iSpotifyAPI.getCurrentTrack("Bearer " +sharedPreferences.getString("isLoggedIn", ""));
+            Call<SpotifyCurrentTrack> spotifyCurrentTrackCall = iSpotifyAPI.getCurrentTrack("Bearer " +sharedPreferences.getString("isLoggedIn", ""), "from_token");
 
             spotifyCurrentTrackCall.enqueue(new Callback<SpotifyCurrentTrack>() {
                 @Override
