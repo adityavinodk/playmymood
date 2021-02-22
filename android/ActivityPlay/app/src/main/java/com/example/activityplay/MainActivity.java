@@ -73,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
             sharedPreferences = getSharedPreferences("com.example.activityplay", Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = sharedPreferences.edit();
             editor.putString("isLoggedIn", authorizationResponse.getAccessToken());
+            editor.commit();
             startActivity(new Intent(MainActivity.this, HomeActivity.class));
 
             Retrofit spotifyRetrofit = SpotifyRetrofitBuilder.getInstance();
