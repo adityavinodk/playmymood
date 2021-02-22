@@ -62,7 +62,7 @@ public class HomeActivity extends AppCompatActivity {
 
                     if(response.body() != null && response.code()==200){
 
-                        if (!currentTrack.equals(response.body())) {
+                        if (!currentTrack.getItem().equals(response.body().getItem())) {
 
                             currentTrack.setItem(response.body().getItem());
 
