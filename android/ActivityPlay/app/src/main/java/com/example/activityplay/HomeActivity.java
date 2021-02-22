@@ -24,10 +24,10 @@ import retrofit2.Response;
 import retrofit2.Retrofit;
 
 public class HomeActivity extends AppCompatActivity {
-    SharedPreferences sharedPreferences;
+    static SharedPreferences sharedPreferences;
     SpotifyCurrentTrack currentTrack = new SpotifyCurrentTrack();
 
-    final Handler handler = new Handler();
+    static Handler handler;
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState, @Nullable PersistableBundle persistentState) {
@@ -37,6 +37,7 @@ public class HomeActivity extends AppCompatActivity {
 
         Log.d("CURRENT_TRACK", "onCreate: Starting handler...");
 
+        handler = new Handler();
         handler.post(runnable);
 
     }
