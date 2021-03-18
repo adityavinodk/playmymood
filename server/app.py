@@ -76,6 +76,7 @@ def add_currently_playing_track():
     if r.status_code in [200, 409]:
         now = int(time.time())
         db.songDataPoint.insert_one({'songId':req_data['id'], 'timestamp': now})
+        config.Config.SONG_ID = req_data['id']
         return responseWithData("Song datapoint successfully added", True, 200, {'timestamp': now, 'songId': req_data['id']})
     return plainResponse("Server error", False, 500)
 
@@ -86,6 +87,10 @@ def add_body_parameter_values():
         return plainResponse("Error: Missing fields in request body", False, 400)
     now = int(time.time())
     db.bodyDataPoint.insert_one({'heartrate': req_data['heartrate'], 'timestamp': now})
+    config.Config.HEART_RATE = req_data['heartrate']
+    timeInSec =(time.localtime().tm_hour*3600)+(time.localtime().tm_min*60)+(time.localtime().tm_sec) 
+    if config.Config.SONG_ID != "":
+        db.datapoints.insert_one({'timestamp': timeInSec, 'HR': config.Config.HEART_RATE, 'songId': config.Config.SONG_ID})
     return responseWithData("Fitness parameter value successfully added", True, 200, {'timestamp': now, 'heartrate': req_data['heartrate']})
 
 @app.route('/', defaults={'path': ''})
