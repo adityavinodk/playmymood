@@ -1,0 +1,21 @@
+{
+    "tracks": [
+        {
+            "songId": "2BqfIlpahcebJPeu1IUTEo",
+            "timestamp": 1616045295
+        }
+    ],
+    "hr": [
+        {
+            "heartrate": 9,
+            "timestamp": 1616045297
+        }
+    ],
+    "merged": [
+        {
+            "songId": "2BqfIlpahcebJPeu1IUTEo",
+            "heartrate": 9,
+            "timestamp": 39497
+        }
+    ]
+}

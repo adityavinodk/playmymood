@@ -11,6 +11,7 @@ import base64
 from secrets import *
 from utils import plainResponse, responseWithData
 from werkzeug.middleware.proxy_fix import ProxyFix
+from config import HEART_RATE, SONG_ID
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
@@ -56,7 +57,7 @@ def add_song_metadata():
     if 'id' not in req_data:
         return plainResponse("Error: Missing fields in request body", False, 400)
     if db.songs.find_one({'songId': req_data['id']})==None:
-        r = req.post("http://127.0.0.1:8000/api/songs/getSongMetadata", headers={'Content-Type':"application/json"}, data=json.dumps({'id': req_data['id']}))
+        r = req.post("http://127.0.0.1:5000/api/songs/getSongMetadata", headers={'Content-Type':"application/json"}, data=json.dumps({'id': req_data['id']}))
         if r.status_code==200:
             metadata = r.json()['data']
             db.songs.insert_one({'songId': req_data['id'], 'metadata': metadata})
@@ -72,10 +73,12 @@ def add_currently_playing_track():
     req_data = request.get_json()
     if 'id' not in req_data:
         return plainResponse("Error: Missing fields in request body", False, 400)
-    r = req.post("http://127.0.0.1:8000/api/songs/addMetadata", headers={'Content-Type':"application/json"}, data=json.dumps({'id': req_data['id']}))
+    r = req.post("http://127.0.0.1:5000/api/songs/addMetadata", headers={'Content-Type':"application/json"}, data=json.dumps({'id': req_data['id']}))
     if r.status_code in [200, 409]:
         now = int(time.time())
         db.songDataPoint.insert_one({'songId':req_data['id'], 'timestamp': now})
+        global SONG_ID
+        SONG_ID = req_data['id']
         return responseWithData("Song datapoint successfully added", True, 200, {'timestamp': now, 'songId': req_data['id']})
     return plainResponse("Server error", False, 500)
 
@@ -86,6 +89,11 @@ def add_body_parameter_values():
         return plainResponse("Error: Missing fields in request body", False, 400)
     now = int(time.time())
     db.bodyDataPoint.insert_one({'heartrate': req_data['heartrate'], 'timestamp': now})
+    global HEART_RATE
+    HEART_RATE = req_data['heartrate']
+    timeInSec = (time.localtime().tm_hour*3600)+(time.localtime().tm_min*60)+(time.localtime().tm_sec)
+    if SONG_ID != "":
+        db.mergedData.insert_one({'timeInSec': timeInSec, 'heartrate': HEART_RATE, 'song': SONG_ID})
     return responseWithData("Fitness parameter value successfully added", True, 200, {'timestamp': now, 'heartrate': req_data['heartrate']})
 
 @app.route('/', defaults={'path': ''})
@@ -94,4 +102,4 @@ def hello(path):
     return "Hello, this domain is used for PlayMyMood project by Aditya Vinod Kumar, PES University"
 
 if __name__ == "__main__":
-    app.run(debug=True, port=8000, host="0.0.0.0")
+    app.run(debug=True, port=5000, host="0.0.0.0")
