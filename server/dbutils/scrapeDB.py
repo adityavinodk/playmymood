@@ -8,6 +8,7 @@ if len(sys.argv)!=2:
 
 tracksList = []
 fitnessList = []
+mergedList = []
 
 my_client = pym.MongoClient()
 db = my_client['playMyMood']
@@ -19,6 +20,9 @@ for document in db.songDataPoint.find():
 for document in db.bodyDataPoint.find():
     b = {"heartrate": document.get("heartrate"), "timestamp": document.get("timestamp")}
     fitnessList.append(b)
+
+for document in db.datapoints.find():
+    mergedList.append(document)
 
 filename = "user-"+sys.argv[1]+".json"
 with open(filename, "w") as f:
