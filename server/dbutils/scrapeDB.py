@@ -26,4 +26,4 @@ for document in db.datapoints.find():
 
 filename = "user-"+sys.argv[1]+".json"
 with open(filename, "w") as f:
-    json.dump({"tracks": tracksList, "hr": fitnessList}, f, indent=4)
+    json.dump({"tracks": tracksList, "hr": fitnessList, 'datapoints': mergedList}, f, indent=4)
