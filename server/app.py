@@ -9,6 +9,7 @@ import config
 import requests as req
 import base64
 from secrets import *
+from modelUtils import addToCluster, makeClusters, retrieveSimilarSongs
 from utils import plainResponse, responseWithData
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -30,6 +31,7 @@ try:
     print(my_client.server_info())
     print("\n----------------------------------------------------------------\nMongo connected. Starting app...\n---------------------    -------------------------------------------")
     db = my_client["playMyMood"]
+    makeClusters(db)
 except pym.errors.ServerSelectionTimeoutError as err:
     print(err)
     print("\n----------------------------------------------------------------\nMongo not connected. Exiting app...\n------------------    -------------------------------------------")
@@ -77,6 +79,11 @@ def add_currently_playing_track():
         now = int(time.time())
         db.songDataPoint.insert_one({'songId':req_data['id'], 'timestamp': now})
         config.Config.SONG_ID = req_data['id']
+        timeInSec =(time.localtime().tm_hour*3600)+(time.localtime().tm_min*60)+(time.localtime().tm_sec) 
+        if config.Config.HEART_RATE != "":
+            data = {'timestamp': timeInSec, 'HR': config.Config.HEART_RATE, 'songId': config.Config.SONG_ID}
+            added_datapoint = db.datapoints.insert_one(data)
+            data['_id'] = added_datapoint.inserted_id
         return responseWithData("Song datapoint successfully added", True, 200, {'timestamp': now, 'songId': req_data['id']})
     return plainResponse("Server error", False, 500)
 
@@ -90,8 +97,19 @@ def add_body_parameter_values():
     config.Config.HEART_RATE = req_data['heartrate']
     timeInSec =(time.localtime().tm_hour*3600)+(time.localtime().tm_min*60)+(time.localtime().tm_sec) 
     if config.Config.SONG_ID != "":
-        db.datapoints.insert_one({'timestamp': timeInSec, 'HR': config.Config.HEART_RATE, 'songId': config.Config.SONG_ID})
+        data = {'timestamp': timeInSec, 'HR': config.Config.HEART_RATE, 'songId': config.Config.SONG_ID}
+        added_datapoint = db.datapoints.insert_one(data)
+        data['_id'] = added_datapoint.inserted_id
     return responseWithData("Fitness parameter value successfully added", True, 200, {'timestamp': now, 'heartrate': req_data['heartrate']})
+
+@app.route("/api/songs/recommendations", methods=["GET"])
+def retrieve_recommendations():
+    datapoint = db.datapoints.find_one(sort=[('_id', pym.DESCENDING)])
+    if datapoint:
+        makeClusters(db)
+        return responseWithData("Recommendations retrieved successfully", True, 200, retrieveSimilarSongs(db, datapoint))
+    return plainResponse("Server error", False, 500)
+    
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
