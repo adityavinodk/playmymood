@@ -3,7 +3,7 @@ import json
 import sys
 
 my_client = pym.MongoClient()
-db = my_client['playMyMood']
+db = my_client["playMyMood"]
 
 p = db.songDataPoint.drop()
 q = db.bodyDataPoint.drop()

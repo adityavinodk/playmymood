@@ -2,7 +2,7 @@ import pymongo as pym
 import json
 import sys
 
-if len(sys.argv)!=2:
+if len(sys.argv) != 2:
     print("Enter argument for file name")
     exit()
 
@@ -11,7 +11,7 @@ fitnessList = []
 mergedList = []
 
 my_client = pym.MongoClient()
-db = my_client['playMyMood']
+db = my_client["playMyMood"]
 
 for document in db.songDataPoint.find():
     b = {"songId": document.get("songId"), "timestamp": document.get("timestamp")}
@@ -24,6 +24,8 @@ for document in db.bodyDataPoint.find():
 for document in db.datapoints.find():
     mergedList.append(document)
 
-filename = "user-"+sys.argv[1]+".json"
+filename = "user-" + sys.argv[1] + ".json"
 with open(filename, "w") as f:
-    json.dump({"tracks": tracksList, "hr": fitnessList, 'datapoints': mergedList}, f, indent=4)
+    json.dump(
+        {"tracks": tracksList, "hr": fitnessList, "datapoints": mergedList}, f, indent=4
+    )
