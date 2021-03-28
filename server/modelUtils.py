@@ -465,12 +465,16 @@ def makeTimestampClusters(db):
                 else:
                     clusters[timestamp_cluster_label]["points"] = [str(data[i]["_id"])]
                     clusters[timestamp_cluster_label]["centroid"] = data[i]["timestamp"]
+                db.datapoints.update_one(
+                    {"_id": ObjectId(data[i]["_id"])},
+                    {"$set": {"timestamp_cluster_index": timestamp_cluster_label}},
+                )
             else:
                 clusters["outliers"].append(str(data[i]["_id"]))
-            db.datapoints.update_one(
-                {"_id": ObjectId(data[i]["_id"])},
-                {"$set": {"timestamp_cluster_index": timestamp_cluster_label}},
-            )
+                db.datapoints.update_one(
+                    {"_id": ObjectId(data[i]["_id"])},
+                    {"$set": {"timestamp_cluster_index": "outlier"}},
+                )
 
         for time_cluster in clusters:
             if time_cluster != "outliers":
@@ -512,12 +516,16 @@ def makeHRClusters(db, ids):
             else:
                 HR_clusters[HR_cluster_label]["points"] = [datapoint_id]
                 HR_clusters[HR_cluster_label]["centroid"] = heart_rate_data
+            db.datapoints.update_one(
+                {"_id": ObjectId(datapoint_id)},
+                {"$set": {"HR_cluster_index": HR_cluster_label}},
+            )
         else:
             HR_clusters["outliers"].append(datapoint_id)
-        db.datapoints.update_one(
-            {"_id": ObjectId(datapoint_id)},
-            {"$set": {"HR_cluster_index": HR_cluster_label}},
-        )
+            db.datapoints.update_one(
+                {"_id": ObjectId(datapoint_id)},
+                {"$set": {"HR_cluster_index": "outlier"}},
+            )
 
     for HR_cluster in HR_clusters:
         if HR_cluster != "outliers":
@@ -568,12 +576,16 @@ def makeSongClusters(db, ids):
             else:
                 song_clusters[song_cluster_label]["points"] = [datapoint_id]
                 song_clusters[song_cluster_label]["centroid"] = song_vec
+            db.datapoints.update_one(
+                {"_id": ObjectId(datapoint_id)},
+                {"$set": {"song_cluster_index": song_cluster_label}},
+            )
         else:
             song_clusters["outliers"].append(datapoint_id)
-        db.datapoints.update_one(
-            {"_id": ObjectId(datapoint_id)},
-            {"$set": {"song_cluster_index": song_cluster_label}},
-        )
+            db.datapoints.update_one(
+                {"_id": ObjectId(datapoint_id)},
+                {"$set": {"song_cluster_index": "outlier"}},
+            )
     for song_cluster_index in song_clusters:
         if song_cluster_index != "outliers":
             song_cluster_centroid = song_clusters[song_cluster_index]["centroid"]
