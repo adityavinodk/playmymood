@@ -7,4 +7,5 @@ class Config:
     SECRET_KEY = "hello"
     RECLUSTER_TIMESTAMP = 0
     SONG_ID = ""
+    USERNAME = "test-user"
     HEART_RATE = 0

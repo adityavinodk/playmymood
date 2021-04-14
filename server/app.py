@@ -8,8 +8,8 @@ import hashlib
 import config
 import requests as req
 import base64
+import sys
 from secrets import *
-
 from modelUtils import (
     makeTimestampClusters,
     addToTimestampClusters,
@@ -28,6 +28,9 @@ messageBytes = message.encode("ascii")
 base64Bytes = base64.b64encode(messageBytes)
 base64Message = base64Bytes.decode("ascii")
 
+if len(sys.argv)>1:
+    app.config['USERNAME'] = sys.argv[1]
+
 try:
     my_client = pym.MongoClient(
         app.config["MONGO_URL"],
@@ -38,7 +41,7 @@ try:
         "\n----------------------------------------------------------------\nMongo connected. Starting app...\n---------------------    -------------------------------------------"
     )
     db = my_client["playMyMood"]
-    makeTimestampClusters(db)
+    makeTimestampClusters(db, app.config['USERNAME'])
     app.config["RECLUSTER_TIMESTAMP"] = int(time.time())
 except pym.errors.ServerSelectionTimeoutError as err:
     print(err)
@@ -128,6 +131,7 @@ def add_currently_playing_track():
         if app.config["HEART_RATE"] != 0:
             data = {
                 "timestamp": timeInSec,
+                "username": app.config['USERNAME'],
                 "HR": app.config["HEART_RATE"],
                 "songId": app.config["SONG_ID"],
             }
@@ -166,6 +170,7 @@ def add_body_parameter_values():
     if app.config["SONG_ID"] != "":
         data = {
             "timestamp": timeInSec,
+            "username": app.config['USERNAME'],
             "HR": app.config["HEART_RATE"],
             "songId": app.config["SONG_ID"],
         }
@@ -191,15 +196,15 @@ def retrieve_recommendations():
         app.config["RECLUSTER_TIMESTAMP"] = now
     datapoint = db.datapoints.find_one(sort=[("_id", pym.DESCENDING)])
     if datapoint:
-        try:
-            data = retrieveSimilarSongs(db, datapoint)
-            return responseWithData(
-                "Recommendations retrieved successfully", True, 200, data
-            )
-        except:
-            return plainResponse(
-                "Server error: can't fetch recommendations, try later", False, 500
-            )
+        # try:
+        data = retrieveSimilarSongs(db, datapoint)
+        return responseWithData(
+            "Recommendations retrieved successfully", True, 200, data
+        )
+        # except:
+            # return plainResponse(
+                # "Server error: can't fetch recommendations, try later", False, 500
+            # )
 
     return plainResponse("Server error: no existing data", False, 500)
 

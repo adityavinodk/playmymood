@@ -397,14 +397,44 @@ def addNewTimestampCluster(db, new_points):
 
 def retrieveSimilarSongs(db, datapoint):
     song_data = []
+    clusters = {}
+    for cluster in db.clusters.find():
+        clusters[str(cluster["clusterId"])] = cluster
+    freq_dict = {"frequencies": []}
+    timestamp_cluster_index = 0
+    while str(timestamp_cluster_index) in clusters:
+        freq_dict["frequencies"].append(
+            len(clusters[str(timestamp_cluster_index)]["data"]["points"])
+        )
+        timestamp_freq_dict = {"frequencies": []}
+        HR_cluster_index = 0
+        HR_clusters = clusters[str(timestamp_cluster_index)]["data"]["HR"]
+        while str(HR_cluster_index) in HR_clusters:
+            timestamp_freq_dict["frequencies"].append(
+                len(HR_clusters[str(HR_cluster_index)]["points"])
+            )
+            HR_freq_dict = {"frequencies": []}
+            song_cluster_index = 0
+            song_clusters = HR_clusters[str(HR_cluster_index)]["songs"]
+            while str(song_cluster_index) in song_clusters:
+                HR_freq_dict["frequencies"].append(
+                    len(song_clusters[str(song_cluster_index)]["points"])
+                )
+                song_cluster_index += 1
+            timestamp_freq_dict[str(HR_cluster_index)] = HR_freq_dict
+            HR_cluster_index += 1
+        freq_dict[str(timestamp_cluster_index)] = timestamp_freq_dict
+        timestamp_cluster_index += 1
+
+    points = []
     # if datapoint is not a timestamp outlier
     if datapoint["timestamp_cluster_index"] != "outlier":
-        timestamp_cluster = db.clusters.find_one(
-            {"clusterId": datapoint["timestamp_cluster_index"]}
-        )["data"]
+        timestamp_cluster = clusters[datapoint["timestamp_cluster_index"]]["data"]
+        HR_freq_dict = freq_dict[datapoint["timestamp_cluster_index"]]
         # if datapoint is not a HR outlier
         if datapoint["HR_cluster_index"] != "outlier":
             HR_cluster = timestamp_cluster["HR"][datapoint["HR_cluster_index"]]
+            song_freq_dict = HR_freq_dict[datapoint["HR_cluster_index"]]
             # if datapoint is not a song outlier
             if datapoint["song_cluster_index"] != "outlier":
                 # get the cluster centroid and recommend most similar songs from music library
@@ -416,27 +446,78 @@ def retrieveSimilarSongs(db, datapoint):
                         distance = 1 - spatial.distance.cosine(centroid_vec, song_vec)
                         song_data.append({"songId": p["songId"], "distance": distance})
                 song_data = sorted(song_data, key=lambda x: x["distance"])
-                return list(map(lambda x: x["songId"], song_data))[:5]
+                points = list(map(lambda x: x["songId"], song_data))[:5]
             # else sample points from points under HR cluster
             else:
-                points = random.sample(HR_cluster["points"], RECOMMENDATION_COUNT)
+                if len(song_freq_dict):
+                    points = []
+                    for i in range(RECOMMENDATION_COUNT):
+                        points.append(
+                            selectRandomFromSongCluster(
+                                HR_cluster["songs"], song_freq_dict
+                            )
+                        )
+                else:
+                    points = random.sample(HR_cluster["points"], RECOMMENDATION_COUNT)
         # else sample points from points under timestamp cluster
         else:
-            points = random.sample(timestamp_cluster["points"], RECOMMENDATION_COUNT)
+            if len(HR_freq_dict):
+                points = []
+                for i in range(RECOMMENDATION_COUNT):
+                    points.append(
+                        selectRandomFromHRCluster(timestamp_cluster["HR"], HR_freq_dict)
+                    )
+            else:
+                points = random.sample(
+                    timestamp_cluster["points"], RECOMMENDATION_COUNT
+                )
     # else fetch the last 5 songs
     # TODO think of a better logic
     else:
-        records = db.datapoints.find(sort=[("_id", pym.DESCENDING)]).limit(
-            RECOMMENDATION_COUNT
-        )
-        points = [point["songId"] for point in records]
+        total_datapoints = sum(freq_dict["frequencies"])
+        if len(freq_dict["frequencies"]):
+            weights = [x / total_datapoints for x in freq_dict["frequencies"]]
+            for i in range(RECOMMENDATION_COUNT):
+                timestamp_cluster_choice = random.choices(
+                    range(len(freq_dict["frequencies"])), weights=weights, k=1
+                )[0]
+                selectRandomFromHRCluster(
+                    clusters[str(timestamp_cluster_choice)]["data"]["HR"],
+                    freq_dict[str(timestamp_cluster_choice)],
+                )
+        else:
+            records = db.datapoints.find(sort=[("_id", pym.DESCENDING)]).limit(
+                RECOMMENDATION_COUNT
+            )
+            points = [point["songId"] for point in records]
 
+    points = [x for x in points if x != datapoint["songId"]]
     return list(set(points))
 
 
-def makeTimestampClusters(db):
+def selectRandomFromHRCluster(HR_clusters, freq_dict):
+    total_timestamp_datapoints = sum(freq_dict["frequencies"])
+    weights = [x / total_timestamp_datapoints for x in freq_dict["frequencies"]]
+    HR_cluster_choice = random.choices(
+        range(len(freq_dict["frequencies"])), weights=weights, k=1
+    )[0]
+    return selectRandomFromSongCluster(
+        HR_clusters[str(HR_cluster_choice)]["songs"], freq_dict[str(HR_cluster_choice)]
+    )
+
+
+def selectRandomFromSongCluster(song_clusters, freq_dict):
+    total_HR_datapoints = sum(freq_dict["frequencies"])
+    weights = [x / total_HR_datapoints for x in freq_dict["frequencies"]]
+    song_cluster_choice = random.choices(
+        range(len(freq_dict["frequencies"])), weights=weights, k=1
+    )[0]
+    return random.sample(song_clusters[str(song_cluster_choice)]["points"], 1)[0]
+
+
+def makeTimestampClusters(db, username):
     data = []
-    for record in db.datapoints.find():
+    for record in db.datapoints.find({"username": username}):
         data.append(record)
     db.clusters.drop()
     if len(data):
