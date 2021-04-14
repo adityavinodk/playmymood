@@ -28,8 +28,8 @@ messageBytes = message.encode("ascii")
 base64Bytes = base64.b64encode(messageBytes)
 base64Message = base64Bytes.decode("ascii")
 
-if len(sys.argv)>1:
-    app.config['USERNAME'] = sys.argv[1]
+if len(sys.argv) > 1:
+    app.config["USERNAME"] = sys.argv[1]
 
 try:
     my_client = pym.MongoClient(
@@ -41,7 +41,7 @@ try:
         "\n----------------------------------------------------------------\nMongo connected. Starting app...\n---------------------    -------------------------------------------"
     )
     db = my_client["playMyMood"]
-    makeTimestampClusters(db, app.config['USERNAME'])
+    makeTimestampClusters(db, app.config["USERNAME"])
     app.config["RECLUSTER_TIMESTAMP"] = int(time.time())
 except pym.errors.ServerSelectionTimeoutError as err:
     print(err)
@@ -90,7 +90,12 @@ def add_song_metadata():
     req_data = request.get_json()
     if "id" not in req_data:
         return plainResponse("Error: Missing fields in request body", False, 400)
-    if db.songs.find_one({"songId": req_data["id"], "username": app.config['USERNAME']}) == None:
+    if (
+        db.songs.find_one(
+            {"songId": req_data["id"], "username": app.config["USERNAME"]}
+        )
+        == None
+    ):
         r = req.post(
             "http://127.0.0.1:8000/api/songs/getSongMetadata",
             headers={"Content-Type": "application/json"},
@@ -98,7 +103,13 @@ def add_song_metadata():
         )
         if r.status_code == 200:
             metadata = r.json()["data"]
-            db.songs.insert_one({"songId": req_data["id"], "metadata": metadata, "username": app.config['USERNAME']})
+            db.songs.insert_one(
+                {
+                    "songId": req_data["id"],
+                    "metadata": metadata,
+                    "username": app.config["USERNAME"],
+                }
+            )
             return plainResponse("Song successfully added", True, 200)
         else:
             return plainResponse("Server error", False, 500)
@@ -120,7 +131,7 @@ def add_currently_playing_track():
     if r.status_code in [200, 409]:
         now = int(time.time())
         if now - app.config["RECLUSTER_TIMESTAMP"] > 3600:
-            makeTimestampClusters(db)
+            makeTimestampClusters(db, app.config["USERNAME"])
             app.config["RECLUSTER_TIMESTAMP"] = now
         app.config["SONG_ID"] = req_data["id"]
         timeInSec = (
@@ -131,7 +142,7 @@ def add_currently_playing_track():
         if app.config["HEART_RATE"] != 0:
             data = {
                 "timestamp": timeInSec,
-                "username": app.config['USERNAME'],
+                "username": app.config["USERNAME"],
                 "HR": app.config["HEART_RATE"],
                 "songId": app.config["SONG_ID"],
             }
@@ -159,7 +170,7 @@ def add_body_parameter_values():
         return plainResponse("Error: Missing fields in request body", False, 400)
     now = int(time.time())
     if now - app.config["RECLUSTER_TIMESTAMP"] > 3600:
-        makeTimestampClusters(db)
+        makeTimestampClusters(db, app.config["USERNAME"])
         app.config["RECLUSTER_TIMESTAMP"] = now
     app.config["HEART_RATE"] = req_data["heartrate"]
     timeInSec = (
@@ -170,7 +181,7 @@ def add_body_parameter_values():
     if app.config["SONG_ID"] != "":
         data = {
             "timestamp": timeInSec,
-            "username": app.config['USERNAME'],
+            "username": app.config["USERNAME"],
             "HR": app.config["HEART_RATE"],
             "songId": app.config["SONG_ID"],
         }
@@ -192,12 +203,12 @@ def add_body_parameter_values():
 def retrieve_recommendations():
     now = int(time.time())
     if now - app.config["RECLUSTER_TIMESTAMP"] > 3600:
-        makeTimestampClusters(db)
+        makeTimestampClusters(db, app.config["USERNAME"])
         app.config["RECLUSTER_TIMESTAMP"] = now
     datapoint = db.datapoints.find_one(sort=[("_id", pym.DESCENDING)])
     if datapoint:
         try:
-            data = retrieveSimilarSongs(db, datapoint, app.config['USERNAME'])
+            data = retrieveSimilarSongs(db, datapoint, app.config["USERNAME"])
             return responseWithData(
                 "Recommendations retrieved successfully", True, 200, data
             )
