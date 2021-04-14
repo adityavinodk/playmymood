@@ -395,7 +395,7 @@ def addNewTimestampCluster(db, new_points):
     )
 
 
-def retrieveSimilarSongs(db, datapoint):
+def retrieveSimilarSongs(db, datapoint, username):
     song_data = []
     clusters = {}
     for cluster in db.clusters.find():
@@ -440,7 +440,7 @@ def retrieveSimilarSongs(db, datapoint):
                 # get the cluster centroid and recommend most similar songs from music library
                 song_cluster = HR_cluster["songs"][datapoint["song_cluster_index"]]
                 centroid_vec = np.array(song_cluster["centroid"])
-                for p in db.songs.find():
+                for p in db.songs.find({"username": username}):
                     if p["songId"] != datapoint["songId"]:
                         song_vec = np.array(p["metadata"])
                         distance = 1 - spatial.distance.cosine(centroid_vec, song_vec)

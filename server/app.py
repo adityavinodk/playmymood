@@ -90,7 +90,7 @@ def add_song_metadata():
     req_data = request.get_json()
     if "id" not in req_data:
         return plainResponse("Error: Missing fields in request body", False, 400)
-    if db.songs.find_one({"songId": req_data["id"]}) == None:
+    if db.songs.find_one({"songId": req_data["id"], "username": app.config['USERNAME']}) == None:
         r = req.post(
             "http://127.0.0.1:8000/api/songs/getSongMetadata",
             headers={"Content-Type": "application/json"},
@@ -98,7 +98,7 @@ def add_song_metadata():
         )
         if r.status_code == 200:
             metadata = r.json()["data"]
-            db.songs.insert_one({"songId": req_data["id"], "metadata": metadata})
+            db.songs.insert_one({"songId": req_data["id"], "metadata": metadata, "username": app.config['USERNAME']})
             return plainResponse("Song successfully added", True, 200)
         else:
             return plainResponse("Server error", False, 500)
@@ -196,15 +196,15 @@ def retrieve_recommendations():
         app.config["RECLUSTER_TIMESTAMP"] = now
     datapoint = db.datapoints.find_one(sort=[("_id", pym.DESCENDING)])
     if datapoint:
-        # try:
-        data = retrieveSimilarSongs(db, datapoint)
-        return responseWithData(
-            "Recommendations retrieved successfully", True, 200, data
-        )
-        # except:
-            # return plainResponse(
-                # "Server error: can't fetch recommendations, try later", False, 500
-            # )
+        try:
+            data = retrieveSimilarSongs(db, datapoint, app.config['USERNAME'])
+            return responseWithData(
+                "Recommendations retrieved successfully", True, 200, data
+            )
+        except:
+            return plainResponse(
+                "Server error: can't fetch recommendations, try later", False, 500
+            )
 
     return plainResponse("Server error: no existing data", False, 500)
 
