@@ -1,22 +1,25 @@
-from flask import Flask, request, Response, session, render_template
-from flask_cors import CORS
-import pymongo as pym
+import argparse
+import base64
 import json
 import os
-import time
-import hashlib
-import config
-import requests as req
-import base64
 import sys
-from secrets import *
-from modelUtils import (
-    makeTimestampClusters,
-    addToTimestampClusters,
-    retrieveSimilarSongs,
-)
-from utils import plainResponse, responseWithData
+import time
+
+import pymongo as pym
+import requests as req
+from flask import Flask
+from flask import request
+from flask import Response
+from flask_cors import CORS
 from werkzeug.middleware.proxy_fix import ProxyFix
+
+import config
+from modelUtils import addToTimestampClusters
+from modelUtils import makeTimestampClusters
+from modelUtils import retrieveSimilarSongs
+from secrets import *
+from utils import plainResponse
+from utils import responseWithData
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
@@ -28,8 +31,52 @@ messageBytes = message.encode("ascii")
 base64Bytes = base64.b64encode(messageBytes)
 base64Message = base64Bytes.decode("ascii")
 
-if len(sys.argv) > 1:
-    app.config["USERNAME"] = sys.argv[1]
+# Run $python run.py -h to print the necessary arguments and their use
+
+ap = argparse.ArgumentParser(
+    description="Script to run the music recommendations server"
+)
+ap.add_argument(
+    "--username",
+    type=str,
+    help="username value to associate DB songs",
+    default="test-user",
+)
+ap.add_argument(
+    "--time_epsilon",
+    type=int,
+    help="time distance epsilon value for clustering",
+    default=3600,
+)
+ap.add_argument(
+    "--HR_epsilon", type=int, help="HR distance epsilon value for clustering", default=10
+)
+ap.add_argument(
+    "--song_epsilon",
+    type=int,
+    help="song vector distance epsilon value for clustering",
+    default=10,
+)
+ap.add_argument(
+    "--recommendation_count",
+    type=int,
+    help="count of recommendations provided by server",
+    default=5,
+)
+ap.add_argument(
+    "--min_pts",
+    type=int,
+    help="count of minimum points required to constitute core cluster point",
+    default=5,
+)
+arguments = vars(ap.parse_args())
+
+app.config['USERNAME'] = arguments['username']
+app.config['TIME_DISTANCE'] = arguments['time_epsilon']
+app.config['HR_DISTANCE'] = arguments['HR_epsilon']
+app.config['SONG_VEC_DISTANCE'] = arguments['song_epsilon']
+app.config['RECOMMENDATION_COUNT'] = arguments['recommendation_count']
+app.config['MIN_PTS'] = arguments['min_pts']
 
 try:
     my_client = pym.MongoClient(
@@ -41,7 +88,7 @@ try:
         "\n----------------------------------------------------------------\nMongo connected. Starting app...\n---------------------    -------------------------------------------"
     )
     db = my_client["playMyMood"]
-    makeTimestampClusters(db, app.config["USERNAME"])
+    makeTimestampClusters(db, arguments)
     app.config["RECLUSTER_TIMESTAMP"] = int(time.time())
 except pym.errors.ServerSelectionTimeoutError as err:
     print(err)
@@ -131,7 +178,7 @@ def add_currently_playing_track():
     if r.status_code in [200, 409]:
         now = int(time.time())
         if now - app.config["RECLUSTER_TIMESTAMP"] > 3600:
-            makeTimestampClusters(db, app.config["USERNAME"])
+            makeTimestampClusters(db, arguments)
             app.config["RECLUSTER_TIMESTAMP"] = now
         app.config["SONG_ID"] = req_data["id"]
         timeInSec = (
@@ -149,7 +196,7 @@ def add_currently_playing_track():
             added_datapoint = db.datapoints.insert_one(data)
             data["_id"] = added_datapoint.inserted_id
             try:
-                addToTimestampClusters(db, data)
+                addToTimestampClusters(db, data, arguments)
             except:
                 return plainResponse(
                     "Server error while adding new datapoint", False, 500
@@ -170,7 +217,7 @@ def add_body_parameter_values():
         return plainResponse("Error: Missing fields in request body", False, 400)
     now = int(time.time())
     if now - app.config["RECLUSTER_TIMESTAMP"] > 3600:
-        makeTimestampClusters(db, app.config["USERNAME"])
+        makeTimestampClusters(db, arguments)
         app.config["RECLUSTER_TIMESTAMP"] = now
     app.config["HEART_RATE"] = req_data["heartrate"]
     timeInSec = (
@@ -188,7 +235,7 @@ def add_body_parameter_values():
         added_datapoint = db.datapoints.insert_one(data)
         data["_id"] = added_datapoint.inserted_id
         try:
-            addToTimestampClusters(db, data)
+            addToTimestampClusters(db, data, arguments)
         except:
             return plainResponse("Server error while adding new datapoint", False, 500)
     return responseWithData(
@@ -203,19 +250,19 @@ def add_body_parameter_values():
 def retrieve_recommendations():
     now = int(time.time())
     if now - app.config["RECLUSTER_TIMESTAMP"] > 3600:
-        makeTimestampClusters(db, app.config["USERNAME"])
+        makeTimestampClusters(db, arguments)
         app.config["RECLUSTER_TIMESTAMP"] = now
     datapoint = db.datapoints.find_one(sort=[("_id", pym.DESCENDING)])
     if datapoint:
-        try:
-            data = retrieveSimilarSongs(db, datapoint, app.config["USERNAME"])
-            return responseWithData(
-                "Recommendations retrieved successfully", True, 200, data
-            )
-        except:
-            return plainResponse(
-                "Server error: can't fetch recommendations, try later", False, 500
-            )
+        # try:
+        data = retrieveSimilarSongs(db, datapoint, arguments)
+        return responseWithData(
+            "Recommendations retrieved successfully", True, 200, data
+        )
+        # except:
+            # return plainResponse(
+                # "Server error: can't fetch recommendations, try later", False, 500
+            # )
 
     return plainResponse("Server error: no existing data", False, 500)
 

@@ -1,9 +1,8 @@
-Werkzeug==1.0.1
 scipy==1.5.2
+pymongo==3.11.1
+Werkzeug==1.0.1
+Flask==1.1.2
 numpy==1.19.1
 Flask_Cors==3.0.9
-Flask==1.1.2
 requests==2.24.0
-pandas==1.1.4
-pymongo==3.11.1
 scikit_learn==0.24.1
