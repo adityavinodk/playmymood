@@ -49,7 +49,10 @@ ap.add_argument(
     default=3600,
 )
 ap.add_argument(
-    "--HR_epsilon", type=int, help="HR distance epsilon value for clustering", default=10
+    "--HR_epsilon",
+    type=int,
+    help="HR distance epsilon value for clustering",
+    default=10,
 )
 ap.add_argument(
     "--song_epsilon",
@@ -71,12 +74,12 @@ ap.add_argument(
 )
 arguments = vars(ap.parse_args())
 
-app.config['USERNAME'] = arguments['username']
-app.config['TIME_DISTANCE'] = arguments['time_epsilon']
-app.config['HR_DISTANCE'] = arguments['HR_epsilon']
-app.config['SONG_VEC_DISTANCE'] = arguments['song_epsilon']
-app.config['RECOMMENDATION_COUNT'] = arguments['recommendation_count']
-app.config['MIN_PTS'] = arguments['min_pts']
+app.config["USERNAME"] = arguments["username"]
+app.config["TIME_DISTANCE"] = arguments["time_epsilon"]
+app.config["HR_DISTANCE"] = arguments["HR_epsilon"]
+app.config["SONG_VEC_DISTANCE"] = arguments["song_epsilon"]
+app.config["RECOMMENDATION_COUNT"] = arguments["recommendation_count"]
+app.config["MIN_PTS"] = arguments["min_pts"]
 
 try:
     my_client = pym.MongoClient(
@@ -252,17 +255,19 @@ def retrieve_recommendations():
     if now - app.config["RECLUSTER_TIMESTAMP"] > 3600:
         makeTimestampClusters(db, arguments)
         app.config["RECLUSTER_TIMESTAMP"] = now
-    datapoint = db.datapoints.find_one(sort=[("_id", pym.DESCENDING)])
+    datapoint = db.datapoints.find_one(
+        {"username": app.config["USERNAME"]}, sort=[("_id", pym.DESCENDING)]
+    )
     if datapoint:
-        # try:
-        data = retrieveSimilarSongs(db, datapoint, arguments)
-        return responseWithData(
-            "Recommendations retrieved successfully", True, 200, data
-        )
-        # except:
-            # return plainResponse(
-                # "Server error: can't fetch recommendations, try later", False, 500
-            # )
+        try:
+            data = retrieveSimilarSongs(db, datapoint, arguments)
+            return responseWithData(
+                "Recommendations retrieved successfully", True, 200, data
+            )
+        except:
+            return plainResponse(
+                "Server error: can't fetch recommendations, try later", False, 500
+            )
 
     return plainResponse("Server error: no existing data", False, 500)
 

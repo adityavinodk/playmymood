@@ -267,7 +267,7 @@ def addToSongClusters(db, new_points, song_clusters, config):
                     {"_id": ObjectId(song_cluster["points"][j])}
                 )["songId"]
                 song_metadata = db.songs.find_one({"songId": point_song})["metadata"]
-                distance = 1 - spatial.distance.cosine(
+                distance = spatial.distance.cosine(
                     np.array(song_metadata), np_datapoint_songVec
                 )
                 if distance < config["song_epsilon"]:
@@ -438,10 +438,11 @@ def retrieveSimilarSongs(db, datapoint, config):
                 for p in db.songs.find({"username": config["username"]}):
                     if p["songId"] != datapoint["songId"]:
                         song_vec = np.array(p["metadata"])
-                        distance = 1 - spatial.distance.cosine(centroid_vec, song_vec)
+                        distance = spatial.distance.cosine(centroid_vec, song_vec)
                         song_data.append({"songId": p["songId"], "distance": distance})
                 song_data = sorted(song_data, key=lambda x: x["distance"])
                 points = list(map(lambda x: x["songId"], song_data))[:5]
+                print(points)
             # else sample points from points under HR cluster
             else:
                 if len(song_freq_dict):
