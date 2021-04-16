@@ -442,7 +442,6 @@ def retrieveSimilarSongs(db, datapoint, config):
                         song_data.append({"songId": p["songId"], "distance": distance})
                 song_data = sorted(song_data, key=lambda x: x["distance"])
                 points = list(map(lambda x: x["songId"], song_data))[:5]
-                print(points)
             # else sample points from points under HR cluster
             else:
                 if len(song_freq_dict):
