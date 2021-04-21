@@ -7,4 +7,10 @@ class Config:
     SECRET_KEY = "hello"
     RECLUSTER_TIMESTAMP = 0
     SONG_ID = ""
+    USERNAME = "test-user"
     HEART_RATE = 0
+    TIME_DISTANCE = 3600
+    HR_DISTANCE = 10
+    SONG_VEC_DISTANCE = 10
+    RECOMMENDATION_COUNT = 5
+    MIN_PTS = 5

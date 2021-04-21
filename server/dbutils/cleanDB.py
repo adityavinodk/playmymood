@@ -5,15 +5,11 @@ import sys
 my_client = pym.MongoClient()
 db = my_client["playMyMood"]
 
-p = db.songDataPoint.drop()
-q = db.bodyDataPoint.drop()
+p = db.songs.drop()
 r = db.datapoints.drop()
 
 if p:
-    print("listening data deleted")
-
-if q:
-    print("fitness data deleted")
+    print("music data deleted")
 
 if r:
     print("merged data deleted")

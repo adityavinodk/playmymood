@@ -1,19 +1,12 @@
-from sklearn.cluster import DBSCAN
-from collections import defaultdict
-import numpy as np
-from scipy import spatial
-import pymongo as pym
-import pandas as pd
 import pprint
 import random
-from bson import ObjectId
-from bson.binary import Binary
+from collections import defaultdict
 
-TIME_DISTANCE = 3600
-HR_DISTANCE = 10
-SONG_VEC_DISTANCE = 10
-RECOMMENDATION_COUNT = 5
-MIN_PTS = 5
+import numpy as np
+import pymongo as pym
+from bson import ObjectId
+from scipy import spatial
+from sklearn.cluster import DBSCAN
 
 
 def get_clusters(data, eps):
@@ -21,7 +14,7 @@ def get_clusters(data, eps):
     return clustering.labels_
 
 
-def addToTimestampClusters(db, datapoint):
+def addToTimestampClusters(db, datapoint, config):
     datapoint_id = datapoint["_id"]
     str_datapoint_id = str(datapoint["_id"])
     datapoint_timestamp = datapoint["timestamp"]
@@ -43,14 +36,14 @@ def addToTimestampClusters(db, datapoint):
         point_count = len(timestamp_cluster["points"])
         near_count = 0
         j = 0
-        while j < point_count and near_count < (MIN_PTS - 1):
+        while j < point_count and near_count < (config["min_pts"] - 1):
             point_timestamp = db.datapoints.find_one(
                 {"_id": ObjectId(timestamp_cluster["points"][j])}
             )["timestamp"]
-            if abs(point_timestamp - datapoint_timestamp) < TIME_DISTANCE:
+            if abs(point_timestamp - datapoint_timestamp) < config["time_epsilon"]:
                 near_count += 1
             j += 1
-        if near_count == (MIN_PTS - 1):
+        if near_count == (config["min_pts"] - 1):
             can_add_to_existing_timestamp_clusters = True
             db.datapoints.update_one(
                 datapoint_id_dict,
@@ -67,7 +60,8 @@ def addToTimestampClusters(db, datapoint):
         )
     all_new_timestamps = [datapoint_timestamp] + outlier_timestamps
     outlier_cluster_labels = get_clusters(
-        np.array(all_new_timestamps).reshape(-1, 1).astype(np.float64), TIME_DISTANCE
+        np.array(all_new_timestamps).reshape(-1, 1).astype(np.float64),
+        config["time_epsilon"],
     )
     # if new datapoint is an outlier among the outliers
     if outlier_cluster_labels[0] == -1:
@@ -120,7 +114,7 @@ def addToTimestampClusters(db, datapoint):
                 + new_timestamp_points
             )
             HR_clusters = clusters[str_timestamp_cluster_index]["data"]["HR"]
-            addToHRClusters(db, new_timestamp_points, HR_clusters)
+            addToHRClusters(db, new_timestamp_points, HR_clusters, config)
             db.clusters.update_one(
                 {"clusterId": str_timestamp_cluster_index},
                 {
@@ -134,10 +128,10 @@ def addToTimestampClusters(db, datapoint):
                 },
             )
         else:
-            addNewTimestampCluster(db, new_timestamp_points)
+            addNewTimestampCluster(db, new_timestamp_points, config)
 
 
-def addToHRClusters(db, new_points, HR_clusters):
+def addToHRClusters(db, new_points, HR_clusters, config):
     new_HR_cluster_index = len(HR_clusters) - 1
     for point_id in new_points:
         datapoint_id_dict = {"_id": ObjectId(point_id)}
@@ -154,14 +148,14 @@ def addToHRClusters(db, new_points, HR_clusters):
             point_count = len(HR_cluster["points"])
             near_count = 0
             j = 0
-            while j < point_count and near_count < (MIN_PTS - 1):
+            while j < point_count and near_count < (config["min_pts"] - 1):
                 point_HR = db.datapoints.find_one(
                     {"_id": ObjectId(HR_cluster["points"][j])}
                 )["HR"]
-                if abs(point_HR - datapoint_HR) < HR_DISTANCE:
+                if abs(point_HR - datapoint_HR) < config["HR_epsilon"]:
                     near_count += 1
                 j += 1
-            if near_count == (MIN_PTS - 1):
+            if near_count == (config["min_pts"] - 1):
                 can_add_to_existing_HR_cluster = True
                 db.datapoints.update_one(
                     datapoint_id_dict,
@@ -178,7 +172,8 @@ def addToHRClusters(db, new_points, HR_clusters):
             )
         all_new_HRs = [datapoint_HR] + outlier_HRs
         outlier_cluster_labels = get_clusters(
-            np.array(all_new_HRs).reshape(-1, 1).astype(np.float64), HR_DISTANCE
+            np.array(all_new_HRs).reshape(-1, 1).astype(np.float64),
+            config["HR_epsilon"],
         )
         # if new datapoint is an outlier among the outliers
         if outlier_cluster_labels[0] == -1:
@@ -224,7 +219,7 @@ def addToHRClusters(db, new_points, HR_clusters):
                     HR_clusters[str_HR_cluster_index]["points"] + new_HR_points
                 )
                 song_clusters = HR_clusters[str_HR_cluster_index]["songs"]
-                addToSongClusters(db, new_HR_points, song_clusters)
+                addToSongClusters(db, new_HR_points, song_clusters, config)
                 HR_clusters[str_HR_cluster_index] = {
                     "points": new_HR_points_list,
                     "centroid": new_centroid,
@@ -233,7 +228,7 @@ def addToHRClusters(db, new_points, HR_clusters):
             # else make new HR cluster
             else:
                 centroid = sum(all_new_HRs) / len(new_HR_points)
-                song_clusters = makeSongClusters(db, new_HR_points)
+                song_clusters = makeSongClusters(db, new_HR_points, config)
                 HR_clusters[str(new_HR_cluster_index)] = {
                     "points": new_HR_points,
                     "centroid": centroid,
@@ -247,7 +242,7 @@ def addToHRClusters(db, new_points, HR_clusters):
                 new_HR_cluster_index += 1
 
 
-def addToSongClusters(db, new_points, song_clusters):
+def addToSongClusters(db, new_points, song_clusters, config):
     new_song_cluster_index = len(song_clusters) - 1
     for point_id in new_points:
         datapoint_id_dict = {"_id": ObjectId(point_id)}
@@ -267,18 +262,18 @@ def addToSongClusters(db, new_points, song_clusters):
             point_count = len(song_cluster["points"])
             near_count = 0
             j = 0
-            while j < point_count and near_count < (MIN_PTS - 1):
+            while j < point_count and near_count < (config["min_pts"] - 1):
                 point_song = db.datapoints.find_one(
                     {"_id": ObjectId(song_cluster["points"][j])}
                 )["songId"]
                 song_metadata = db.songs.find_one({"songId": point_song})["metadata"]
-                distance = 1 - spatial.distance.cosine(
+                distance = spatial.distance.cosine(
                     np.array(song_metadata), np_datapoint_songVec
                 )
-                if distance < SONG_VEC_DISTANCE:
+                if distance < config["song_epsilon"]:
                     near_count += 1
                 j += 1
-            if near_count == (MIN_PTS - 1):
+            if near_count == (config["min_pts"] - 1):
                 can_add_to_existing_song_cluster = True
                 db.datapoints.update_one(
                     datapoint_id_dict,
@@ -300,7 +295,7 @@ def addToSongClusters(db, new_points, song_clusters):
             outlier_songVecs.append(song_metadata)
         all_new_songVecs = [datapoint_songVec] + outlier_songVecs
         outlier_cluster_labels = get_clusters(
-            np.array(all_new_songVecs).astype(np.float64), SONG_VEC_DISTANCE
+            np.array(all_new_songVecs).astype(np.float64), config["song_epsilon"]
         )
         # if new datapoint is an outlier among the outliers
         if outlier_cluster_labels[0] == -1:
@@ -370,7 +365,7 @@ def addToSongClusters(db, new_points, song_clusters):
                 new_song_cluster_index += 1
 
 
-def addNewTimestampCluster(db, new_points):
+def addNewTimestampCluster(db, new_points, config):
     data = []
     for datapoint_id in new_points:
         data.append(db.datapoints.find_one({"_id": ObjectId(datapoint_id)}))
@@ -386,7 +381,7 @@ def addNewTimestampCluster(db, new_points):
         )
 
     centroid = sum(timestamps) / len(new_points)
-    HR_clusters = makeHRClusters(db, new_points)
+    HR_clusters = makeHRClusters(db, new_points, config)
     db.clusters.insert_one(
         {
             "clusterId": str(timestamp_cluster_index),
@@ -395,48 +390,131 @@ def addNewTimestampCluster(db, new_points):
     )
 
 
-def retrieveSimilarSongs(db, datapoint):
+def retrieveSimilarSongs(db, datapoint, config):
     song_data = []
+    clusters = {}
+    for cluster in db.clusters.find():
+        clusters[str(cluster["clusterId"])] = cluster
+    freq_dict = {"frequencies": []}
+    timestamp_cluster_index = 0
+    while str(timestamp_cluster_index) in clusters:
+        freq_dict["frequencies"].append(
+            len(clusters[str(timestamp_cluster_index)]["data"]["points"])
+        )
+        timestamp_freq_dict = {"frequencies": []}
+        HR_cluster_index = 0
+        HR_clusters = clusters[str(timestamp_cluster_index)]["data"]["HR"]
+        while str(HR_cluster_index) in HR_clusters:
+            timestamp_freq_dict["frequencies"].append(
+                len(HR_clusters[str(HR_cluster_index)]["points"])
+            )
+            HR_freq_dict = {"frequencies": []}
+            song_cluster_index = 0
+            song_clusters = HR_clusters[str(HR_cluster_index)]["songs"]
+            while str(song_cluster_index) in song_clusters:
+                HR_freq_dict["frequencies"].append(
+                    len(song_clusters[str(song_cluster_index)]["points"])
+                )
+                song_cluster_index += 1
+            timestamp_freq_dict[str(HR_cluster_index)] = HR_freq_dict
+            HR_cluster_index += 1
+        freq_dict[str(timestamp_cluster_index)] = timestamp_freq_dict
+        timestamp_cluster_index += 1
+
+    points = []
     # if datapoint is not a timestamp outlier
     if datapoint["timestamp_cluster_index"] != "outlier":
-        timestamp_cluster = db.clusters.find_one(
-            {"clusterId": datapoint["timestamp_cluster_index"]}
-        )["data"]
+        timestamp_cluster = clusters[datapoint["timestamp_cluster_index"]]["data"]
+        HR_freq_dict = freq_dict[datapoint["timestamp_cluster_index"]]
         # if datapoint is not a HR outlier
         if datapoint["HR_cluster_index"] != "outlier":
             HR_cluster = timestamp_cluster["HR"][datapoint["HR_cluster_index"]]
+            song_freq_dict = HR_freq_dict[datapoint["HR_cluster_index"]]
             # if datapoint is not a song outlier
             if datapoint["song_cluster_index"] != "outlier":
                 # get the cluster centroid and recommend most similar songs from music library
                 song_cluster = HR_cluster["songs"][datapoint["song_cluster_index"]]
                 centroid_vec = np.array(song_cluster["centroid"])
-                for p in db.songs.find():
+                for p in db.songs.find({"username": config["username"]}):
                     if p["songId"] != datapoint["songId"]:
                         song_vec = np.array(p["metadata"])
-                        distance = 1 - spatial.distance.cosine(centroid_vec, song_vec)
+                        distance = spatial.distance.cosine(centroid_vec, song_vec)
                         song_data.append({"songId": p["songId"], "distance": distance})
                 song_data = sorted(song_data, key=lambda x: x["distance"])
-                return list(map(lambda x: x["songId"], song_data))[:5]
+                points = list(map(lambda x: x["songId"], song_data))[:5]
             # else sample points from points under HR cluster
             else:
-                points = random.sample(HR_cluster["points"], RECOMMENDATION_COUNT)
+                if len(song_freq_dict):
+                    points = []
+                    for i in range(config["recommendation_count"]):
+                        points.append(
+                            selectRandomFromSongCluster(
+                                HR_cluster["songs"], song_freq_dict
+                            )
+                        )
+                else:
+                    points = random.sample(
+                        HR_cluster["points"], config["recommendation_count"]
+                    )
         # else sample points from points under timestamp cluster
         else:
-            points = random.sample(timestamp_cluster["points"], RECOMMENDATION_COUNT)
+            if len(HR_freq_dict):
+                points = []
+                for i in range(config["recommendation_count"]):
+                    points.append(
+                        selectRandomFromHRCluster(timestamp_cluster["HR"], HR_freq_dict)
+                    )
+            else:
+                points = random.sample(
+                    timestamp_cluster["points"], config["recommendation_count"]
+                )
     # else fetch the last 5 songs
     # TODO think of a better logic
     else:
-        records = db.datapoints.find(sort=[("_id", pym.DESCENDING)]).limit(
-            RECOMMENDATION_COUNT
-        )
-        points = [point["songId"] for point in records]
+        total_datapoints = sum(freq_dict["frequencies"])
+        if len(freq_dict["frequencies"]):
+            weights = [x / total_datapoints for x in freq_dict["frequencies"]]
+            for i in range(config["recommendation_count"]):
+                timestamp_cluster_choice = random.choices(
+                    range(len(freq_dict["frequencies"])), weights=weights, k=1
+                )[0]
+                selectRandomFromHRCluster(
+                    clusters[str(timestamp_cluster_choice)]["data"]["HR"],
+                    freq_dict[str(timestamp_cluster_choice)],
+                )
+        else:
+            records = db.datapoints.find(sort=[("_id", pym.DESCENDING)]).limit(
+                config["recommendation_count"]
+            )
+            points = [point["songId"] for point in records]
 
+    points = [x for x in points if x != datapoint["songId"]]
     return list(set(points))
 
 
-def makeTimestampClusters(db):
+def selectRandomFromHRCluster(HR_clusters, freq_dict):
+    total_timestamp_datapoints = sum(freq_dict["frequencies"])
+    weights = [x / total_timestamp_datapoints for x in freq_dict["frequencies"]]
+    HR_cluster_choice = random.choices(
+        range(len(freq_dict["frequencies"])), weights=weights, k=1
+    )[0]
+    return selectRandomFromSongCluster(
+        HR_clusters[str(HR_cluster_choice)]["songs"], freq_dict[str(HR_cluster_choice)]
+    )
+
+
+def selectRandomFromSongCluster(song_clusters, freq_dict):
+    total_HR_datapoints = sum(freq_dict["frequencies"])
+    weights = [x / total_HR_datapoints for x in freq_dict["frequencies"]]
+    song_cluster_choice = random.choices(
+        range(len(freq_dict["frequencies"])), weights=weights, k=1
+    )[0]
+    return random.sample(song_clusters[str(song_cluster_choice)]["points"], 1)[0]
+
+
+def makeTimestampClusters(db, config):
     data = []
-    for record in db.datapoints.find():
+    for record in db.datapoints.find({"username": config["username"]}):
         data.append(record)
     db.clusters.drop()
     if len(data):
@@ -445,7 +523,9 @@ def makeTimestampClusters(db):
         for d in data:
             timestamps.append(d["timestamp"])
         timestamps = np.array(timestamps).reshape(-1, 1).astype(np.float64)
-        timestamp_cluster_labels = get_clusters(np.array(timestamps), TIME_DISTANCE)
+        timestamp_cluster_labels = get_clusters(
+            np.array(timestamps), config["time_epsilon"]
+        )
 
         # save timestamp cluster data
         clusters = defaultdict(dict)
@@ -478,7 +558,9 @@ def makeTimestampClusters(db):
 
         for time_cluster in clusters:
             if time_cluster != "outliers":
-                HR_clusters = makeHRClusters(db, clusters[time_cluster]["points"])
+                HR_clusters = makeHRClusters(
+                    db, clusters[time_cluster]["points"], config
+                )
 
                 clusters[time_cluster]["HR"] = dict(HR_clusters)
 
@@ -492,13 +574,13 @@ def makeTimestampClusters(db):
         db.clusters.insert_one({"clusterId": "outliers", "data": []})
 
 
-def makeHRClusters(db, ids):
+def makeHRClusters(db, ids, config):
     HR_points = []
     for point_id in ids:
         HR_points.append(db.datapoints.find_one({"_id": ObjectId(point_id)})["HR"])
 
     HR_points = np.array(HR_points).reshape(-1, 1).astype(np.float64)
-    HR_cluster_labels = get_clusters(np.array(HR_points), HR_DISTANCE)
+    HR_cluster_labels = get_clusters(np.array(HR_points), config["HR_epsilon"])
     HR_clusters = defaultdict(dict)
     HR_clusters["outliers"] = []
     for i in range(len(HR_cluster_labels)):
@@ -529,14 +611,16 @@ def makeHRClusters(db, ids):
 
     for HR_cluster in HR_clusters:
         if HR_cluster != "outliers":
-            song_clusters = makeSongClusters(db, HR_clusters[HR_cluster]["points"])
+            song_clusters = makeSongClusters(
+                db, HR_clusters[HR_cluster]["points"], config
+            )
 
             HR_clusters[HR_cluster]["songs"] = dict(song_clusters)
 
     return HR_clusters
 
 
-def makeSongClusters(db, ids):
+def makeSongClusters(db, ids, config):
     song_points = []
     for point_id in ids:
         song_points.append(
@@ -549,7 +633,7 @@ def makeSongClusters(db, ids):
             )["metadata"]
         )
     song_points = np.array(song_points).astype(np.float64)
-    song_cluster_labels = get_clusters(song_points, SONG_VEC_DISTANCE)
+    song_cluster_labels = get_clusters(song_points, config["song_epsilon"])
 
     song_clusters = defaultdict(dict)
     song_clusters["outliers"] = []
