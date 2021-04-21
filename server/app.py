@@ -17,7 +17,7 @@ import config
 from modelUtils import addToTimestampClusters
 from modelUtils import makeTimestampClusters
 from modelUtils import retrieveSimilarSongs
-from secrets import *
+from dbutils.secrets import *
 from utils import plainResponse
 from utils import responseWithData
 
