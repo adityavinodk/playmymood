@@ -127,6 +127,35 @@ public class HomeActivity extends AppCompatActivity {
         }
     };
 
+    private void addToQueue(String trackId){
+        sharedPreferences = getSharedPreferences("com.example.activityplay", Context.MODE_PRIVATE);
+
+        Retrofit spotifyRetrofit = SpotifyRetrofitBuilder.getInstance();
+        ISpotifyAPI iSpotifyAPI = spotifyRetrofit.create(ISpotifyAPI.class);
+
+        Call<Void> spotifyQueue = iSpotifyAPI.addToQueue(
+                "Bearer " + sharedPreferences.getString("isLoggedIn", ""),
+                "spotify:track:" + trackId
+        );
+
+        spotifyQueue.enqueue(new Callback<Void>() {
+            @Override
+            public void onResponse(Call<Void> call, Response<Void> response2) {
+                if (response2.code() == 204) {
+                    Log.d("RECOMMENDATIONS", "spotifyResponse: Added " + trackId + " to queue");
+                } else if (response2.code() == 404) {
+                    Log.d("RECOMMENDATIONS", "spotifyResponse: Device or Track not found");
+                } else if (response2.code() == 403) {
+                    Log.d("RECOMMENDATIONS", "spotifyResponse: User not Premium");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<Void> call, Throwable t) {
+                Log.d("RECOMMENDATIONS", "spotifyFailure: Failed to enqueue Spotify call");
+            }
+        });
+    }
 
 
     private final Runnable recommendationsRunnable = new Runnable() {
@@ -138,7 +167,7 @@ public class HomeActivity extends AppCompatActivity {
             Retrofit spotifyRetrofit = SpotifyRetrofitBuilder.getInstance();
             ISpotifyAPI iSpotifyAPI = spotifyRetrofit.create(ISpotifyAPI.class);
 
-            Log.d("CURRENT_TRACK_R", "Token: " +sharedPreferences.getString("isLoggedIn", ""));
+            Log.d("RECOMMENDATIONS", "Token: " +sharedPreferences.getString("isLoggedIn", ""));
 
             Call<SpotifyCurrentTrack> spotifyCurrentTrackCall = iSpotifyAPI.getCurrentTrack("Bearer " +sharedPreferences.getString("isLoggedIn", ""), "from_token");
 
@@ -148,25 +177,31 @@ public class HomeActivity extends AppCompatActivity {
 
                     SpotifyCurrentTrack spotifyCurrentTrack = response.body();
 
-                    Log.d("CURRENT_TRACK_R", "onResponse: Call made to Spotify with response " +response.code());
-                    Log.d("CURRENT_TRACK_R", "onResponse: Call made to Spotify with body " +spotifyCurrentTrack.getItem().getId());
-                    Log.d("CURRENT_TRACK_R", "onResponse: Current track on phone " +currentTrack.getItem().getId());
+                    Log.d("RECOMMENDATIONS", "currentTrack: Call made to Spotify with response " +response.code());
+                    Log.d("RECOMMENDATIONS", "currentTrack: Call made to Spotify with body " +spotifyCurrentTrack.getItem().getId());
 
-                    Log.d("CURRENT_TRACK_R", "onResponse: Equality = " +spotifyCurrentTrack.getItem().getId().equals(currentTrack.getItem().getId()));
+//                    boolean a = spotifyCurrentTrack.getItem().getId().equals(currentTrack.getItem().getId());
 
-                    boolean a = spotifyCurrentTrack.getItem().getId().equals(currentTrack.getItem().getId());
+                    if (!spotifyCurrentTrack.getItem().getId().equals(currentTrack.getItem().getId())) {
 
-                    if(!a){
-                        Log.d("CHECK", "onResponse: A = TRUE " +a);
-                    }
-
-                    if (!a) {
-
-                        Log.d("RECOMMENDATIONS", "onResponse: TRACK CHANGED, FETCHING RECOMMENDATIONS");
+                        Log.d("RECOMMENDATIONS", "currentTrack: TRACK CHANGED, FETCHING RECOMMENDATIONS");
                         currentTrack.setItem(response.body().getItem());
 
                         Retrofit backendRetrofit = BackendRetrofitBuilder.getInstance();
                         IBackendAPI iBackendAPI = backendRetrofit.create(IBackendAPI.class);
+
+                        Call<Void> backendSendCurrentTrackCall = iBackendAPI.addCurrentlyPlayingTrack(response.body().getItem());
+                        backendSendCurrentTrackCall.enqueue(new Callback<Void>() {
+                            @Override
+                            public void onResponse(Call<Void> call, Response<Void> response) {
+                                Log.d("RECOMMENDATIONS", "currentTrack: Sent to server with response " +response.code());
+                            }
+
+                            @Override
+                            public void onFailure(Call<Void> call, Throwable t) {
+                                Log.d("RECOMMENDATIONS", "currentTrack: Send to backend server failed");
+                            }
+                        });
 
                         Call<RecommendationDTO> backendGetRecommendations = iBackendAPI.getRecommendations();
                         Log.d("RECOMMENDATIONS", "run: Fetching recommendations");
@@ -174,51 +209,29 @@ public class HomeActivity extends AppCompatActivity {
                             @Override
                             public void onResponse(Call<RecommendationDTO> call, Response<RecommendationDTO> response) {
                                 if (response.code() == 200) {
-                                    Log.d("RECOMMENDATIONS", "onResponseBackend: Succesfully received recommendations from backend");
+                                    Log.d("RECOMMENDATIONS", "backendResponse: Succesfully received recommendations from backend");
 
-                                    Call<Void> spotifyQueue = iSpotifyAPI.addToQueue(
-                                            "Bearer " + sharedPreferences.getString("isLoggedIn", ""),
-                                            "spotify:track:" + response.body().getData().get(0)
-                                    );
-                                    spotifyQueue.enqueue(new Callback<Void>() {
-                                        @Override
-                                        public void onResponse(Call<Void> call, Response<Void> response2) {
-                                            if (response2.code() == 204) {
-                                                Log.d("RECOMMENDATIONS", "onResponseSpotify: Added " + response.body().getData().get(0) + " to queue");
-                                            } else if (response2.code() == 404) {
-                                                Log.d("RECOMMENDATIONS", "onResponseSpotify: Device or Track not found");
-                                            } else if (response2.code() == 403) {
-                                                Log.d("RECOMMENDATIONS", "onResponseSpotify: User not Premium");
-                                            }
-                                        }
-
-                                        @Override
-                                        public void onFailure(Call<Void> call, Throwable t) {
-                                            Log.d("RECOMMENDATIONS", "onFailureSpotify: Failed to enqueue Spotify call");
-                                        }
-                                    });
+                                    addToQueue(response.body().getData().get(0));
+                                    addToQueue(response.body().getData().get(1));
+                                    addToQueue(response.body().getData().get(2));
 
                                 }
                                 else{
-                                    Log.d("RECOMMENDATIONS", "onResponse: Response = " +response.code());
+                                    Log.d("RECOMMENDATIONS", "spotifyResponse: Response = " +response.code());
                                 }
                             }
 
                             @Override
                             public void onFailure(Call<RecommendationDTO> call, Throwable t) {
-                                Log.d("RECOMMENDATIONS", "onFailureBackend: Failed to enqueue backend call");
+                                Log.d("RECOMMENDATIONS", "backendFailure: Failed to enqueue backend call");
                             }
                         });
-                    }
-                    else{
-                        Log.d("RECOMMENDATIONS", "currentTrack: " +currentTrack.getItem().getId());
-                        Log.d("RECOMMENDATIONS", "spotifyTrack: " +spotifyCurrentTrack.getItem().getId());
                     }
                 }
 
                 @Override
                 public void onFailure(Call<SpotifyCurrentTrack> call, Throwable t) {
-                    Log.d("CURRENT_TRACK_R", "onFailure: Call to Spotify failed");
+                    Log.d("RECOMMENDATIONS", "onFailure: Call to Spotify failed");
                 }
             });
 
