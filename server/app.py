@@ -56,9 +56,9 @@ ap.add_argument(
 )
 ap.add_argument(
     "--song_epsilon",
-    type=int,
+    type=float,
     help="song vector distance epsilon value for clustering",
-    default=10,
+    default=0.05,
 )
 ap.add_argument(
     "--recommendation_count",
@@ -91,6 +91,7 @@ try:
         "\n----------------------------------------------------------------\nMongo connected. Starting app...\n---------------------    -------------------------------------------"
     )
     db = my_client["playMyMood"]
+    print('Running server with arguments ', arguments)
     makeTimestampClusters(db, arguments)
     app.config["RECLUSTER_TIMESTAMP"] = int(time.time())
 except pym.errors.ServerSelectionTimeoutError as err:
