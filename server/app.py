@@ -91,7 +91,7 @@ try:
         "\n----------------------------------------------------------------\nMongo connected. Starting app...\n---------------------    -------------------------------------------"
     )
     db = my_client["playMyMood"]
-    print('Running server with arguments ', arguments)
+    print("Running server with arguments ", arguments)
     makeTimestampClusters(db, arguments)
     app.config["RECLUSTER_TIMESTAMP"] = int(time.time())
 except pym.errors.ServerSelectionTimeoutError as err:
@@ -130,8 +130,39 @@ def getSongData():
             metadata["valence"],
             metadata["tempo"],
         ]
+        genres = []
+        song_data_url = f"https://api.spotify.com/v1/tracks/{req_data['id']}"
+        song_data_req = req.get(
+            song_data_url, headers={"Authorization": "Bearer " + token}
+        )
+        if song_data_req.status_code == 200:
+            song_data = song_data_req.json()
+            album_id = song_data["album"]["id"]
+            album_data_url = f"https://api.spotify.com/v1/albums/{album_id}"
+            album_data_req = req.get(
+                album_data_url, headers={"Authorization": "Bearer " + token}
+            )
+            if album_data_req.status_code == 200:
+                album_data = album_data_req.json()
+                if len(album_data["genres"]):
+                    genres = album_data["genres"]
+                else:
+                    all_genres = set()
+                    for artist in song_data["artists"][:2]:
+                        artist_data_url = (
+                            f"https://api.spotify.com/v1/artists/{artist['id']}"
+                        )
+                        artist_data_req = req.get(
+                            artist_data_url,
+                            headers={"Authorization": "Bearer " + token},
+                        )
+                        if artist_data_req.status_code == 200:
+                            artist_data = artist_data_req.json()
+                            all_genres |= set(artist_data["genres"])
+                    genres = list(all_genres)
+        return_data = {"metadata": data, "genres": genres}
         return responseWithData(
-            "Spotify Track data successfully recieved", True, 200, data
+            "Spotify Track data successfully recieved", True, 200, return_data
         )
     return plainResponse("Server error", False, 500)
 
@@ -157,7 +188,8 @@ def add_song_metadata():
             db.songs.insert_one(
                 {
                     "songId": req_data["id"],
-                    "metadata": metadata,
+                    "metadata": metadata["metadata"],
+                    "genres": metadata["genres"],
                     "username": app.config["USERNAME"],
                 }
             )

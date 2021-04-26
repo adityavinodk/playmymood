@@ -2,6 +2,8 @@ from secrets import *
 import requests as req
 import json
 import base64
+from tqdm import tqdm
+import time
 
 message = f"{clientId}:{clientSecret}"
 messageBytes = message.encode("ascii")
@@ -17,7 +19,9 @@ token = req.post(
 with open("playlistIds.json", "r") as f:
     data = json.load(f)
 
-for playlistId in data["ids"]:
+failed_points = []
+for i in tqdm(range(len(data["ids"]))):
+    playlistId = data["ids"][i]
     url = f"https://api.spotify.com/v1/playlists/{playlistId}/tracks"
     playlistReq = req.get(url, headers={"Authorization": "Bearer " + token})
     if playlistReq.status_code == 200:
@@ -29,10 +33,11 @@ for playlistId in data["ids"]:
                 headers={"Content-Type": "application/json"},
                 data=json.dumps({"id": songId}),
             )
-            print(songId, end=" ")
             if r.status_code == 200:
-                print("Song Added")
-            elif r.status_code == 409:
-                print("Song already present")
-            else:
-                print("Failed")
+                time.sleep(0.5)
+            elif r.status_code == 500:
+                failed_points.append(songId)
+
+if len(failed_points):
+    for point in failed_points:
+        print(point)

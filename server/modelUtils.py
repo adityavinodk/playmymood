@@ -439,48 +439,101 @@ def retrieveSimilarSongs(db, datapoint, config):
                     if p["songId"] != datapoint["songId"]:
                         song_vec = np.array(p["metadata"])
                         distance = spatial.distance.cosine(centroid_vec, song_vec)
-                        song_data.append({"songId": p["songId"], "distance": distance})
+                        song_data.append(
+                            {
+                                "songId": p["songId"],
+                                "genres": db.songs.find_one({"songId": p["songId"]})[
+                                    "genres"
+                                ],
+                                "distance": distance,
+                            }
+                        )
                 song_data = sorted(song_data, key=lambda x: x["distance"])
-                points = list(map(lambda x: x["songId"], song_data))[:5]
+                count = index = 0
+                rec_songs = []
+                different_genre_songs = []
+                datapoint_genres = db.songs.find_one(
+                    {"songId": datapoint["songId"]}
+                )["genres"]
+                total_songs = len(song_data)
+                while index < total_songs and count < config["recommendation_count"]:
+                    song = song_data[index]
+                    if len(
+                        [genre for genre in song["genres"] if genre in datapoint_genres]
+                    ):
+                        rec_songs.append(song)
+                        count += 1
+                    else:
+                        different_genre_songs.append(song)
+                    index += 1
+                rec_songs = rec_songs + different_genre_songs[: (5 - count)]
+                points = list(map(lambda x: x["songId"], rec_songs))
             # else sample points from points under HR cluster
             else:
-                if len(song_freq_dict):
+                if len(song_freq_dict["frequencies"]):
                     points = []
                     for i in range(config["recommendation_count"]):
                         points.append(
                             selectRandomFromSongCluster(
-                                HR_cluster["songs"], song_freq_dict
+                                db,
+                                HR_cluster["songs"],
+                                song_freq_dict,
+                                HR_cluster["points"],
                             )
                         )
                 else:
-                    points = random.sample(
+                    datapoints = random.sample(
                         HR_cluster["points"], config["recommendation_count"]
                     )
+                    points = []
+                    for datapoint_id in datapoints:
+                        points.append(
+                            db.datapoints.find_one({"_id": ObjectId(datapoint_id)})[
+                                "songId"
+                            ]
+                        )
         # else sample points from points under timestamp cluster
         else:
-            if len(HR_freq_dict):
+            if len(HR_freq_dict["frequencies"]):
                 points = []
                 for i in range(config["recommendation_count"]):
                     points.append(
-                        selectRandomFromHRCluster(timestamp_cluster["HR"], HR_freq_dict)
+                        selectRandomFromHRCluster(
+                            db,
+                            timestamp_cluster["HR"],
+                            HR_freq_dict,
+                            timestamp_cluster["points"],
+                        )
                     )
             else:
-                points = random.sample(
+                datapoints = random.sample(
                     timestamp_cluster["points"], config["recommendation_count"]
                 )
+                points = []
+                for datapoint_id in datapoints:
+                    points.append(
+                        db.datapoints.find_one({"_id": ObjectId(datapoint_id)})[
+                            "songId"
+                        ]
+                    )
     # else fetch the last 5 songs
     # TODO think of a better logic
     else:
         total_datapoints = sum(freq_dict["frequencies"])
         if len(freq_dict["frequencies"]):
+            points = []
             weights = [x / total_datapoints for x in freq_dict["frequencies"]]
             for i in range(config["recommendation_count"]):
                 timestamp_cluster_choice = random.choices(
                     range(len(freq_dict["frequencies"])), weights=weights, k=1
                 )[0]
-                selectRandomFromHRCluster(
-                    clusters[str(timestamp_cluster_choice)]["data"]["HR"],
-                    freq_dict[str(timestamp_cluster_choice)],
+                points.append(
+                    selectRandomFromHRCluster(
+                        db,
+                        clusters[str(timestamp_cluster_choice)]["data"]["HR"],
+                        freq_dict[str(timestamp_cluster_choice)],
+                        clusters[str(timestamp_cluster_choice)]["data"]["points"],
+                    )
                 )
         else:
             records = db.datapoints.find(sort=[("_id", pym.DESCENDING)]).limit(
@@ -488,28 +541,40 @@ def retrieveSimilarSongs(db, datapoint, config):
             )
             points = [point["songId"] for point in records]
 
-    points = [x for x in points if x != datapoint["songId"]]
+    points = [x for x in set(points) if x != datapoint["songId"]]
     return list(set(points))
 
 
-def selectRandomFromHRCluster(HR_clusters, freq_dict):
+def selectRandomFromHRCluster(db, HR_clusters, freq_dict, parent_points):
     total_timestamp_datapoints = sum(freq_dict["frequencies"])
-    weights = [x / total_timestamp_datapoints for x in freq_dict["frequencies"]]
-    HR_cluster_choice = random.choices(
-        range(len(freq_dict["frequencies"])), weights=weights, k=1
-    )[0]
-    return selectRandomFromSongCluster(
-        HR_clusters[str(HR_cluster_choice)]["songs"], freq_dict[str(HR_cluster_choice)]
-    )
+    if total_timestamp_datapoints:
+        weights = [x / total_timestamp_datapoints for x in freq_dict["frequencies"]]
+        HR_cluster_choice = random.choices(
+            range(len(freq_dict["frequencies"])), weights=weights, k=1
+        )[0]
+        return selectRandomFromSongCluster(
+            db,
+            HR_clusters[str(HR_cluster_choice)]["songs"],
+            freq_dict[str(HR_cluster_choice)],
+            HR_clusters[str(HR_cluster_choice)]["points"],
+        )
+    datapoint_id = random.sample(parent_points, 1)[0]
+    return db.datapoints.find_one({"_id": ObjectId(datapoint_id)})["songId"]
 
 
-def selectRandomFromSongCluster(song_clusters, freq_dict):
+def selectRandomFromSongCluster(db, song_clusters, freq_dict, parent_points):
     total_HR_datapoints = sum(freq_dict["frequencies"])
-    weights = [x / total_HR_datapoints for x in freq_dict["frequencies"]]
-    song_cluster_choice = random.choices(
-        range(len(freq_dict["frequencies"])), weights=weights, k=1
-    )[0]
-    return random.sample(song_clusters[str(song_cluster_choice)]["points"], 1)[0]
+    if total_HR_datapoints:
+        weights = [x / total_HR_datapoints for x in freq_dict["frequencies"]]
+        song_cluster_choice = random.choices(
+            range(len(freq_dict["frequencies"])), weights=weights, k=1
+        )[0]
+        datapoint_id = random.sample(
+            song_clusters[str(song_cluster_choice)]["points"], 1
+        )[0]
+    else:
+        datapoint_id = random.sample(parent_points, 1)[0]
+    return db.datapoints.find_one({"_id": ObjectId(datapoint_id)})["songId"]
 
 
 def makeTimestampClusters(db, config):

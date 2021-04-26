@@ -12,11 +12,9 @@ my_client = pym.MongoClient()
 db = my_client["playMyMood"]
 
 for document in db.datapoints.find():
-    del document['_id']
+    del document["_id"]
     mergedList.append(document)
 
 filename = "user-" + sys.argv[1] + ".json"
 with open(filename, "w") as f:
-    json.dump(
-        mergedList, f, indent=4
-    )
+    json.dump(mergedList, f, indent=4)
