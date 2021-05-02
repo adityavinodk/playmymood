@@ -249,7 +249,7 @@ def add_currently_playing_track():
 @app.route("/api/fitness/addBodyParameterValues", methods=["POST"])
 def add_body_parameter_values():
     req_data = request.get_json()
-    if "heartrate" not in req_data:
+    if "heartrate" not in req_data or type(req_data['heartrate'])!=int:
         return plainResponse("Error: Missing fields in request body", False, 400)
     now = int(time.time())
     if now - app.config["RECLUSTER_TIMESTAMP"] > 3600:
