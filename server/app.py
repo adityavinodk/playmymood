@@ -31,77 +31,6 @@ messageBytes = message.encode("ascii")
 base64Bytes = base64.b64encode(messageBytes)
 base64Message = base64Bytes.decode("ascii")
 
-# Run $python run.py -h to print the necessary arguments and their use
-
-ap = argparse.ArgumentParser(
-    description="Script to run the music recommendations server"
-)
-ap.add_argument(
-    "--username",
-    type=str,
-    help="username value to associate DB songs",
-    default="test-user",
-)
-ap.add_argument(
-    "--time_epsilon",
-    type=int,
-    help="time distance epsilon value for clustering",
-    default=3600,
-)
-ap.add_argument(
-    "--HR_epsilon",
-    type=int,
-    help="HR distance epsilon value for clustering",
-    default=10,
-)
-ap.add_argument(
-    "--song_epsilon",
-    type=float,
-    help="song vector distance epsilon value for clustering",
-    default=0.05,
-)
-ap.add_argument(
-    "--recommendation_count",
-    type=int,
-    help="count of recommendations provided by server",
-    default=5,
-)
-ap.add_argument(
-    "--min_pts",
-    type=int,
-    help="count of minimum points required to constitute core cluster point",
-    default=5,
-)
-arguments = vars(ap.parse_args())
-
-app.config["USERNAME"] = arguments["username"]
-app.config["TIME_DISTANCE"] = arguments["time_epsilon"]
-app.config["HR_DISTANCE"] = arguments["HR_epsilon"]
-app.config["SONG_VEC_DISTANCE"] = arguments["song_epsilon"]
-app.config["RECOMMENDATION_COUNT"] = arguments["recommendation_count"]
-app.config["MIN_PTS"] = arguments["min_pts"]
-
-try:
-    my_client = pym.MongoClient(
-        app.config["MONGO_URL"],
-        serverSelectionTimeoutMS=app.config["SERVER_SELECT_TIMEOUT"],
-    )
-    print(my_client.server_info())
-    print(
-        "\n----------------------------------------------------------------\nMongo connected. Starting app...\n---------------------    -------------------------------------------"
-    )
-    db = my_client["playMyMood"]
-    print("Running server with arguments ", arguments)
-    makeTimestampClusters(db, arguments)
-    app.config["RECLUSTER_TIMESTAMP"] = int(time.time())
-except pym.errors.ServerSelectionTimeoutError as err:
-    print(err)
-    print(
-        "\n----------------------------------------------------------------\nMongo not connected. Exiting app...\n------------------    -------------------------------------------"
-    )
-    exit()
-
-
 @app.route("/api/songs/getSongMetadata", methods=["POST"])
 def getSongData():
     req_data = request.get_json()
@@ -246,7 +175,7 @@ def add_currently_playing_track():
     return plainResponse("Server error", False, 500)
 
 
-@app.route("/api/fitness/addBodyParameterValues", methods=["POST"])
+@app.route("/api/fitness/addHRValues", methods=["POST"])
 def add_body_parameter_values():
     req_data = request.get_json()
     if "heartrate" not in req_data or type(req_data['heartrate'])!=int:
@@ -312,4 +241,74 @@ def hello(path):
 
 
 if __name__ == "__main__":
+
+    # Run $python run.py -h to print the necessary arguments and their use
+
+    ap = argparse.ArgumentParser(
+        description="Script to run the music recommendations server"
+    )
+    ap.add_argument(
+        "--username",
+        type=str,
+        help="username value to associate DB songs",
+        default="test-user",
+    )
+    ap.add_argument(
+        "--time_epsilon",
+        type=int,
+        help="time distance epsilon value for clustering",
+        default=3600,
+    )
+    ap.add_argument(
+        "--HR_epsilon",
+        type=int,
+        help="HR distance epsilon value for clustering",
+        default=10,
+    )
+    ap.add_argument(
+        "--song_epsilon",
+        type=float,
+        help="song vector distance epsilon value for clustering",
+        default=0.5,
+    )
+    ap.add_argument(
+        "--recommendation_count",
+        type=int,
+        help="count of recommendations provided by server",
+        default=5,
+    )
+    ap.add_argument(
+        "--min_pts",
+        type=int,
+        help="count of minimum points required to constitute core cluster point",
+        default=5,
+    )
+    arguments = vars(ap.parse_args())
+
+    app.config["USERNAME"] = arguments["username"]
+    app.config["TIME_DISTANCE"] = arguments["time_epsilon"]
+    app.config["HR_DISTANCE"] = arguments["HR_epsilon"]
+    app.config["SONG_VEC_DISTANCE"] = arguments["song_epsilon"]
+    app.config["RECOMMENDATION_COUNT"] = arguments["recommendation_count"]
+    app.config["MIN_PTS"] = arguments["min_pts"]
+
+    try:
+        my_client = pym.MongoClient(
+            app.config["MONGO_URL"],
+            serverSelectionTimeoutMS=app.config["SERVER_SELECT_TIMEOUT"],
+        )
+        print(my_client.server_info())
+        print(
+            "\n----------------------------------------------------------------\nMongo connected. Starting app...\n---------------------    -------------------------------------------"
+        )
+        db = my_client["playMyMood"]
+        print("Running server with arguments ", arguments)
+        makeTimestampClusters(db, arguments)
+        app.config["RECLUSTER_TIMESTAMP"] = int(time.time())
+    except pym.errors.ServerSelectionTimeoutError as err:
+        print(err)
+        print(
+            "\n----------------------------------------------------------------\nMongo not connected. Exiting app...\n------------------    -------------------------------------------"
+        )
+        exit()
     app.run(debug=True, port=8000, host="0.0.0.0")
