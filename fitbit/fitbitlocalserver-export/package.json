@@ -1,0 +1,29 @@
+{
+  "devDependencies": {
+    "@fitbit/sdk": "~4.2.0"
+  },
+  "fitbit": {
+    "appUUID": "0d60f7fd-57e9-4549-8ab7-01dbdfbbfabe",
+    "appType": "clockface",
+    "appDisplayName": "Clock Face",
+    "iconFile": "resources/icon.png",
+    "wipeColor": "",
+    "requestedPermissions": [
+      "access_heart_rate",
+      "access_activity",
+      "access_user_profile",
+      "access_location",
+      "run_background",
+      "access_internet"
+    ],
+    "buildTargets": [
+      "mira"
+    ],
+    "i18n": {
+      "en-US": {
+        "name": "Clock Face"
+      }
+    },
+    "defaultLanguage": "en-US"
+  }
+}
