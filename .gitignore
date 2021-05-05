@@ -1,5 +1,10 @@
 .vscode/
 .DS_Store
+
+/*android files*/
+.idea/
+
+/*server files*/
+server/secrets.py
 __pycache__/
 *.pem
-.idea/

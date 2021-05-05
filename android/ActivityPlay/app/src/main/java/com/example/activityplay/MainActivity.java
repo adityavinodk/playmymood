@@ -8,9 +8,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import android.widget.Button;
-import android.widget.Toast;
 
 import com.example.activityplay.model.SpotifyPagingObject;
 import com.example.activityplay.model.SpotifyTrack;
@@ -22,7 +20,6 @@ import com.spotify.sdk.android.authentication.AuthenticationClient;
 import com.spotify.sdk.android.authentication.AuthenticationRequest;
 import com.spotify.sdk.android.authentication.AuthenticationResponse;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import retrofit2.Call;
@@ -55,7 +52,7 @@ public class MainActivity extends AppCompatActivity {
         }
         else{
             AuthenticationRequest.Builder builder = new AuthenticationRequest.Builder(CLIENT_ID, AuthenticationResponse.Type.TOKEN, REDIRECT_URI);
-            builder.setScopes(new String[]{"user-top-read"});
+            builder.setScopes(new String[]{"user-top-read", "user-read-currently-playing", "user-read-playback-state", "user-modify-playback-state"});
             AuthenticationRequest request = builder.build();
             findViewById(R.id.bt_signin).setOnClickListener(view -> {
                 AuthenticationClient.openLoginActivity(this, RC_SPOTIFY, request);
@@ -76,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
             sharedPreferences = getSharedPreferences("com.example.activityplay", Context.MODE_PRIVATE);
             SharedPreferences.Editor editor = sharedPreferences.edit();
             editor.putString("isLoggedIn", authorizationResponse.getAccessToken());
+            editor.commit();
             startActivity(new Intent(MainActivity.this, HomeActivity.class));
 
             Retrofit spotifyRetrofit = SpotifyRetrofitBuilder.getInstance();
@@ -87,14 +85,14 @@ public class MainActivity extends AppCompatActivity {
                 @Override
                 public void onResponse(Call<SpotifyPagingObject> call, Response<SpotifyPagingObject> response) {
 
-                    if(response.isSuccessful()){
+                    if(response.isSuccessful() && response.code()==200){
                         Log.d("SPOTIFYGETTOPTRACKS", "onResponse: " +response.body().getItems().toString());
 
                         Retrofit backendRetrofit = BackendRetrofitBuilder.getInstance();
                         IBackendAPI iBackendAPI = backendRetrofit.create(IBackendAPI.class);
                         List<SpotifyTrack> spotifyTracks = response.body().getItems();
                         for(SpotifyTrack track : spotifyTracks){
-                            Call<Void> backendTopTracksCall = iBackendAPI.sendTopTracks(track);
+                            Call<Void> backendTopTracksCall = iBackendAPI.sendSongData(track);
                             backendTopTracksCall.enqueue(new Callback<Void>() {
                                 @Override
                                 public void onResponse(Call<Void> call, Response<Void> response) {
