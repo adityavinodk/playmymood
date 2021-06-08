@@ -1,5 +1,6 @@
 from dbutils.secrets import serverSecret
 
+
 class Config:
     MONGO_URL = "mongodb://localhost:27017/"
     SERVER_SELECT_TIMEOUT = 3

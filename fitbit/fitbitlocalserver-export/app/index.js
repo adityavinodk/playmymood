@@ -8,8 +8,7 @@ import * as gyroscope from "./simple/gyroscope";
 import * as battery from "./simple/battery";
 import userActivity from "user-activity";
 
-
-var document = require('document');
+var document = require("document");
 let txtTime = document.getElementById("txtTime");
 let txtDate = document.getElementById("txtDate");
 let txtHRM = document.getElementById("txtHRM");
@@ -17,7 +16,6 @@ let iconHRM = document.getElementById("iconHRM");
 let imgHRM = iconHRM.getElementById("icon");
 let statsCycle = document.getElementById("stats-cycle");
 let statsCycleItems = statsCycle.getElementsByClassName("cycle-item");
-
 
 /* --------- CLOCK ---------- */
 function clockCallback(data) {
@@ -49,10 +47,8 @@ function hrmCallback(data) {
   if (data.bpm !== "--") {
     iconHRM.animate("highlight");
   }
-  
 }
 simpleHRM.initialize(hrmCallback);
-
 
 //accelerometer.initialize();
 //barometer.start();

@@ -369,8 +369,7 @@ def addNewTimestampCluster(db, new_points, config):
     data = []
     for datapoint_id in new_points:
         data.append(db.datapoints.find_one({"_id": ObjectId(datapoint_id)}))
-    timestamp_cluster_index = db.clusters.find().count() - 1
-
+    timestamp_cluster_index = db.clusters.count_documents() - 1
     # get all timestamps
     timestamps = []
     for d in data:
@@ -435,7 +434,10 @@ def retrieveSimilarSongs(db, datapoint, config):
                 # get the cluster centroid and recommend most similar songs from music library
                 song_cluster = HR_cluster["songs"][datapoint["song_cluster_index"]]
                 centroid_vec = np.array(song_cluster["centroid"])
-                for p in db.songs.find({"username": config["username"]}):
+                music_library = db.users.find_one({"username": config["username"]})[
+                    "musicLibrary"
+                ]
+                for p in music_library:
                     if p["songId"] != datapoint["songId"]:
                         song_vec = np.array(p["metadata"])
                         distance = spatial.distance.cosine(centroid_vec, song_vec)
@@ -452,9 +454,9 @@ def retrieveSimilarSongs(db, datapoint, config):
                 count = index = 0
                 rec_songs = []
                 different_genre_songs = []
-                datapoint_genres = db.songs.find_one(
-                    {"songId": datapoint["songId"]}
-                )["genres"]
+                datapoint_genres = db.songs.find_one({"songId": datapoint["songId"]})[
+                    "genres"
+                ]
                 total_songs = len(song_data)
                 while index < total_songs and count < config["recommendation_count"]:
                     song = song_data[index]

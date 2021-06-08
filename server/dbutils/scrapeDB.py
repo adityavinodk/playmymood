@@ -1,6 +1,7 @@
-import pymongo as pym
 import json
 import sys
+
+import pymongo as pym
 
 if len(sys.argv) != 2:
     print("Enter argument for file name")

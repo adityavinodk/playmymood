@@ -1,9 +1,10 @@
-import pymongo as pym
-import requests as req
-from secrets import *
 import base64
 import json
 import sys
+from secrets import *
+
+import pymongo as pym
+import requests as req
 
 message = f"{clientId}:{clientSecret}"
 messageBytes = message.encode("ascii")

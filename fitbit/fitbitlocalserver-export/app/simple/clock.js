@@ -35,7 +35,7 @@ function tickHandler(evt) {
   let timeString = `${hours}:${mins}`;
   let dateString = today;
 
-  switch(dateFormat) {
+  switch (dateFormat) {
     case "shortDate":
       dateString = `${dayNumber} ${monthNameShort}`;
       break;
@@ -46,6 +46,5 @@ function tickHandler(evt) {
       dateString = `${dayName} ${monthName} ${dayNumber}`;
       break;
   }
-  clockCallback({time: timeString, date: dateString});
+  clockCallback({ time: timeString, date: dateString });
 }
-

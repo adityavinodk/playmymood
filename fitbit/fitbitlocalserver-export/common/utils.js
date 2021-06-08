@@ -10,12 +10,17 @@ export function zeroPad(i) {
 
 // You need the YYYY-MM-DD format to use fitbit webAPI
 export function formatDate(date) {
-  return date.getFullYear()+"-"+zeroPad(date.getMonth()+1)+"-"+zeroPad(date.getDate());
+  return (
+    date.getFullYear() +
+    "-" +
+    zeroPad(date.getMonth() + 1) +
+    "-" +
+    zeroPad(date.getDate())
+  );
 }
-export function sendToServer(data){
-    if (messaging.peerSocket.readyState === messaging.peerSocket.OPEN) {
-          //Send object as JSON string to companion
-          messaging.peerSocket.send(JSON.stringify(data));
-     }
-  
+export function sendToServer(data) {
+  if (messaging.peerSocket.readyState === messaging.peerSocket.OPEN) {
+    //Send object as JSON string to companion
+    messaging.peerSocket.send(JSON.stringify(data));
+  }
 }

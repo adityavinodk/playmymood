@@ -1,9 +1,10 @@
-from secrets import *
-import requests as req
-import json
 import base64
-from tqdm import tqdm
+import json
 import time
+from secrets import *
+
+import requests as req
+from tqdm import tqdm
 
 message = f"{clientId}:{clientSecret}"
 messageBytes = message.encode("ascii")

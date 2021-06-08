@@ -10,7 +10,7 @@
                         'key'=>'heartrate',
                         'value'=> serialize($heartData),
                         'device_id'=> $encoded_id,
-                       ];    
+                       ];
                 break;
             case 'accelerometer':
                 $accelerometerData = $data['data'];
@@ -18,7 +18,7 @@
                         'key'=>'accelerometer',
                         'value'=> serialize($accelerometerData),
                         'device_id'=> $encoded_id,
-                       ];    
+                       ];
                 break;
             case 'barometer':
                $barometerData = $data['data'];
@@ -34,16 +34,16 @@
                         'key'=>'gyroscope',
                         'value'=> serialize($gyroscopeData),
                         'device_id'=> $encoded_id,
-                       ];    
-                break;  
+                       ];
+                break;
                 case 'activity':
                  $activityData = $data['data'];
                  $save=[
                           'key'=>'activity',
                           'value'=> serialize($activityData),
                           'device_id'=> $encoded_id
-                         ];    
-                break; 
+                         ];
+                break;
                 default:
                 $save=[];
                 break;

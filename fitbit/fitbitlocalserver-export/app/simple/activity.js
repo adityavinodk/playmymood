@@ -12,7 +12,7 @@ export function initialize(granularity, callback) {
     var calories = getCalories();
     var distance = getDistance();
     var elevationGain = getElevationGain();
-    var activeMinutes =getActiveMinutes();
+    var activeMinutes = getActiveMinutes();
     clock.granularity = granularity;
     clock.addEventListener("tick", tickHandler);
     activityCallback = callback;
@@ -23,79 +23,91 @@ export function initialize(granularity, callback) {
       calories: getDeniedStats(),
       distance: getDeniedStats(),
       elevationGain: getDeniedStats(),
-      activeMinutes: getDeniedStats()
+      activeMinutes: getDeniedStats(),
     });
   }
 }
 
 let activityData = () => {
-  
-  
-  return {  
+  return {
     steps: getSteps(),
     calories: getCalories(),
     distance: getDistance(),
     elevationGain: getElevationGain(),
-    activeMinutes: getActiveMinutes()
-  };  
-  
-  
-}
+    activeMinutes: getActiveMinutes(),
+  };
+};
 function tickHandler(evt) {
   var activity = activityData();
-  var data = {'steps' :   activity.steps.raw,'calories':activity.calories.raw,'distance':activity.distance.raw,'elevationGain':activity.elevationGain.raw,'activeMinutes':activity.activeMinutes.raw,'timestamp':util.formatDate(new Date())}
-   //util.sendToServer({'key':'activity','data':data});
+  var data = {
+    steps: activity.steps.raw,
+    calories: activity.calories.raw,
+    distance: activity.distance.raw,
+    elevationGain: activity.elevationGain.raw,
+    activeMinutes: activity.activeMinutes.raw,
+    timestamp: util.formatDate(new Date()),
+  };
+  //util.sendToServer({'key':'activity','data':data});
   activityCallback(activityData());
 }
 
 function getActiveMinutes() {
-  let val = (today.adjusted.activeMinutes || 0);
+  let val = today.adjusted.activeMinutes || 0;
   return {
     raw: val,
-    pretty: (val < 60 ? "" : Math.floor(val/60) + "h,") + ("0" + (val%60)).slice("-2") + "m"
-  }
+    pretty:
+      (val < 60 ? "" : Math.floor(val / 60) + "h,") +
+      ("0" + (val % 60)).slice("-2") +
+      "m",
+  };
 }
 
 function getCalories() {
-  let val = (today.adjusted.calories || 0);
+  let val = today.adjusted.calories || 0;
   return {
     raw: val,
-    pretty: val > 999 ? Math.floor(val/1000) + "," + ("00"+(val%1000)).slice(-3) : val
-  }
+    pretty:
+      val > 999
+        ? Math.floor(val / 1000) + "," + ("00" + (val % 1000)).slice(-3)
+        : val,
+  };
 }
 
 function getDistance() {
   let val = (today.adjusted.distance || 0) / 1000;
   let u = "km";
-  if(units.distance === "us") {
+  if (units.distance === "us") {
     val *= 0.621371;
     u = "mi";
   }
   return {
     raw: val,
-    pretty: `${val.toFixed(2)}${u}`
-  }
+    pretty: `${val.toFixed(2)}${u}`,
+  };
 }
 
 function getElevationGain() {
   let val = today.adjusted.elevationGain || 0;
   return {
     raw: val,
-    pretty: `+${val}`
-  }
+    pretty: `+${val}`,
+  };
 }
 
 function getSteps() {
-  let val = (today.adjusted.steps || 0);
+  let val = today.adjusted.steps || 0;
   return {
     raw: val,
-    pretty: val > 999 ? Math.floor(val/1000) + "," + ("00"+(val%1000)).slice(-3) : val
-  }
+    pretty:
+      val > 999
+        ? Math.floor(val / 1000) + "," + ("00" + (val % 1000)).slice(-3)
+        : val,
+  };
 }
 
 function getDeniedStats() {
   return {
     raw: 0,
-    pretty: "Denied"
-  }
+    pretty: "Denied",
+  };
 }

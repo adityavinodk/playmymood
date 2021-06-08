@@ -1,5 +1,6 @@
-import pymongo as pym
 import sys
+
+import pymongo as pym
 
 client = pym.MongoClient()
 db = client["playMyMood"]

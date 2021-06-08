@@ -1,10 +1,11 @@
-from secrets import *
-import requests as req
-import json
 import base64
-from scipy import spatial
-import numpy as np
+import json
 import sys
+from secrets import *
+
+import numpy as np
+import requests as req
+from scipy import spatial
 
 message = f"{clientId}:{clientSecret}"
 messageBytes = message.encode("ascii")

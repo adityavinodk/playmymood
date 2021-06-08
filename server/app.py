@@ -5,21 +5,23 @@ import os
 import sys
 import time
 
+import config
 import pymongo as pym
 import requests as req
+from dbutils.secrets import *
 from flask import Flask
 from flask import request
 from flask import Response
 from flask_cors import CORS
-from werkzeug.middleware.proxy_fix import ProxyFix
-
-import config
 from modelUtils import addToTimestampClusters
 from modelUtils import makeTimestampClusters
 from modelUtils import retrieveSimilarSongs
-from dbutils.secrets import *
+from userUtils import addSongToSimilarUsers
+from userUtils import addSongToUserMusicLibrary
+from userUtils import addUser
 from utils import plainResponse
 from utils import responseWithData
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
@@ -30,6 +32,7 @@ message = f"{clientId}:{clientSecret}"
 messageBytes = message.encode("ascii")
 base64Bytes = base64.b64encode(messageBytes)
 base64Message = base64Bytes.decode("ascii")
+
 
 @app.route("/api/songs/getSongMetadata", methods=["POST"])
 def getSongData():
@@ -101,12 +104,7 @@ def add_song_metadata():
     req_data = request.get_json()
     if "id" not in req_data:
         return plainResponse("Error: Missing fields in request body", False, 400)
-    if (
-        db.songs.find_one(
-            {"songId": req_data["id"], "username": app.config["USERNAME"]}
-        )
-        == None
-    ):
+    if db.songs.count_documents({"songId": req_data["id"]}) == 0:
         r = req.post(
             "http://127.0.0.1:8000/api/songs/getSongMetadata",
             headers={"Content-Type": "application/json"},
@@ -119,13 +117,14 @@ def add_song_metadata():
                     "songId": req_data["id"],
                     "metadata": metadata["metadata"],
                     "genres": metadata["genres"],
-                    "username": app.config["USERNAME"],
                 }
             )
+            addSongToUserMusicLibrary(db, app.config["USERNAME"], req_data["id"])
             return plainResponse("Song successfully added", True, 200)
         else:
             return plainResponse("Server error", False, 500)
     else:
+        addSongToUserMusicLibrary(db, app.config["USERNAME"], req_data["id"])
         return plainResponse("Song already present", False, 409)
     return plainResponse("Server error", False, 500)
 
@@ -166,6 +165,13 @@ def add_currently_playing_track():
                 return plainResponse(
                     "Server error while adding new datapoint", False, 500
                 )
+        addSongToSimilarUsers(
+            db,
+            app.config["USERNAME"],
+            req_data["id"],
+            app.config["GENRES"],
+            app.config["COLLAB_PROB"],
+        )
         return responseWithData(
             "Song datapoint successfully added",
             True,
@@ -178,7 +184,7 @@ def add_currently_playing_track():
 @app.route("/api/fitness/addHRValues", methods=["POST"])
 def add_body_parameter_values():
     req_data = request.get_json()
-    if "heartrate" not in req_data or type(req_data['heartrate'])!=int:
+    if "heartrate" not in req_data or type(req_data["heartrate"]) != int:
         return plainResponse("Error: Missing fields in request body", False, 400)
     now = int(time.time())
     if now - app.config["RECLUSTER_TIMESTAMP"] > 3600:
@@ -283,6 +289,12 @@ if __name__ == "__main__":
         help="count of minimum points required to constitute core cluster point",
         default=5,
     )
+    ap.add_argument(
+        "--collab_prob",
+        type=float,
+        help="probability for adding songs to other similar users",
+        default=0.2,
+    )
     arguments = vars(ap.parse_args())
 
     app.config["USERNAME"] = arguments["username"]
@@ -291,6 +303,13 @@ if __name__ == "__main__":
     app.config["SONG_VEC_DISTANCE"] = arguments["song_epsilon"]
     app.config["RECOMMENDATION_COUNT"] = arguments["recommendation_count"]
     app.config["MIN_PTS"] = arguments["min_pts"]
+    app.config["COLLAB_PROB"] = arguments["collab_prob"]
+
+    if "genres.json" not in os.listdir("dbutils"):
+        print("genres.json file not present in dbutils/ directory. Exiting")
+        exit()
+    with open("genres.json", "r") as f:
+        app.config["GENRES"] = json.load(f.read())["genres"]
 
     try:
         my_client = pym.MongoClient(
@@ -303,6 +322,7 @@ if __name__ == "__main__":
         )
         db = my_client["playMyMood"]
         print("Running server with arguments ", arguments)
+        addUser(db, app.config["USERNAME"], len(app.config["GENRE_COUNT"]))
         makeTimestampClusters(db, arguments)
         app.config["RECLUSTER_TIMESTAMP"] = int(time.time())
     except pym.errors.ServerSelectionTimeoutError as err:

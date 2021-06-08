@@ -13,10 +13,10 @@ let lastReading = 0;
 let heartRate;
 
 export function initialize(callback) {
-    hrmCallback = callback;
-    hrm = new HeartRateSensor();
-    start();
-    lastReading = hrm.timestamp;
+  hrmCallback = callback;
+  hrm = new HeartRateSensor();
+  start();
+  lastReading = hrm.timestamp;
 }
 
 function getReading() {
@@ -26,21 +26,21 @@ function getReading() {
     heartRate = hrm.heartRate;
   }
   lastReading = hrm.timestamp;
-      var data = {'heartrate' : hrm.heartRate,'timestamp':util.formatDate(new Date())}
-      util.sendToServer({'key':'heartrate','data':data});
-   
+  var data = {
+    heartrate: hrm.heartRate,
+    timestamp: util.formatDate(new Date()),
+  };
+  util.sendToServer({ key: "heartrate", data: data });
+
   hrmCallback({
     bpm: heartRate,
     zone: user.heartRateZone(hrm.heartRate || 0),
-    restingHeartRate: user.restingHeartRate
+    restingHeartRate: user.restingHeartRate,
   });
 }
 
 function start() {
-    hrm.start();
-    getReading();
-   setInterval(getReading, 5000);
-  
+  hrm.start();
+  getReading();
+  setInterval(getReading, 5000);
 }
-
-
